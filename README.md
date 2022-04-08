@@ -1,48 +1,52 @@
 + [ ] Build NFT pallet
   + [ ] Storage 
     ```rust
-    Mapping<u128, TokenMetadata> idToMetadata; 
+    #[pallet::storage]
+    pub(super) type TokenById<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], NonFungibleToken<T>>;
+
+    #[pallet::storage]
+    pub(super) type TokenSale<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], Sale<T>>;
     ```
 
     ```rust 
-    pub struct TokenMetadata {
+    // Metadata trong near la thong tin bo sung ma creator them vao nft
+    pub struct Token {
       pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
       pub description: Option<String>, // free-form description
       pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
-      pub media_hash: Option<Base64VecU8>, // Base64-encoded sha256 hash of content referenced by the `media` field. Required if `media` is included.
       pub creator: Option<AccountId>,
-      
+      pub royalty: Vec<(T::AccountId, u32)>, 
       pub co_owner: Option<AccountId>,
     }
     ```
   + [ ] Function:
-    + [ ] Mint
-    + [ ] Transfer
-    + [ ] transferFrom
-    + [ ] Burn
-    + [ ] balanceOf
+    + [ ] Mint // (done)
+    + [ ] Transfer // a marketplace just buy, not transfer 
+    + [ ] transferFrom // a marketplace just buy, not transfer 
+    + [ ] Burn // (done)
+    + [ ] balanceOf // 
     + [ ] ownerOf
-    + [ ] approve
-    + [ ] getApproved
-    + [ ] setApprovalForAll
-    + [ ] isApprovedForAll
+    + [ ] approve // no need cus pallet have no id to get approve for. So we just our own marketplace (1)
+    + [ ] getApproved // (1)
+    + [ ] setApprovalForAll // (1)
+    + [ ] isApprovedForAll // (1)
     + [ ] _exists
-    + [ ] _isApprovedOrOwner
+    + [ ] _isApprovedOrOwner // (1)
 + [ ] Marketplace pallet
   + [ ] Storage
   ```rust
   pub struct Sale{
-    pub seller: AccountId,
-    pub price: Balance,
-    pub token_id: u128,
+    pub owner: Option<T::AccountId>,
+		pub price: Option<BalanceOf<T>>,
+		pub in_installment: Option<bool>
   }
   ```
   + [ ] Function
-    + [ ] create sale
-    + [ ] purchase
+    + [ ] create sale // (done)
+    + [ ] sale update(set price) // (done)
+    + [ ] purchase(buy) // (done)
     + [ ] pay installments
     + [ ] withdraw sales
-    + [ ] sale update
     + [ ] withdraw cash
     + [ ] pool lending
   
