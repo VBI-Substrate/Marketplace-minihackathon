@@ -73,6 +73,7 @@ impl pallet_nft::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type NFTRandomness = RandomnessCollectiveFlip;
+	type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.

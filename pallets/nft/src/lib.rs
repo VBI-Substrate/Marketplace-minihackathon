@@ -8,16 +8,22 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+pub mod weights;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{tokens::ExistenceRequirement, Currency, Randomness}
+		traits::{tokens::ExistenceRequirement, Currency, Randomness},
+		transactional, require_transactional
 	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_io::hashing::blake2_128;
 	use sp_std::vec::Vec;
+	use crate::weights::WeightInfo;
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
@@ -71,6 +77,8 @@ pub mod pallet {
 		type Currency: Currency<Self::AccountId>;
 
 		type NFTRandomness: Randomness<Self::Hash, Self::BlockNumber>;
+
+		type WeightInfo: WeightInfo;
 	}
 
 	// Errors
@@ -92,6 +100,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		Created { nft: [u8; 16], owner: T::AccountId },
+		Edited { nft: [u8; 16], owner: T::AccountId },
 		PriceSet { nft: [u8; 16], price: Option<BalanceOf<T>> },
 		SetSaleNFT { nft: [u8; 16], price: Option<BalanceOf<T>> },
 		NFTOnSale { nft: [u8; 16], price: Option<BalanceOf<T>> },
@@ -110,7 +119,8 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::mint_nft())]
+		#[transactional]
 		pub fn mint_nft(
 			origin: OriginFor<T>,
 			title: Option<Vec<u16>>,
@@ -146,7 +156,42 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::edit_nft())]
+		#[transactional]
+		pub fn edit_nft(
+			origin: OriginFor<T>,
+			nft_id: [u8; 16],
+			title: Option<Vec<u16>>,
+			description: Option<Vec<u128>>,
+			media: Option<Vec<u128>>,
+			media_hash: Option<Vec<u128>>,
+			co_owner: Option<T::AccountId>,
+			royalty: Vec<(T::AccountId, u32)>
+		) -> DispatchResult {
+			// Make sure the caller is from a signed origin
+			let sender = ensure_signed(origin)?;
+
+			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
+			ensure!(nft.owner == Some(sender.clone()), Error::<T>::NotOwner);
+
+			nft.title = title;
+			nft.description = description;
+			nft.media = media;
+			nft.media_hash = media_hash;
+			nft.co_owner = co_owner;
+			nft.royalty = royalty;
+			nft.is_burnt = Some(false);
+
+			TokenById::<T>::insert(nft_id, nft);
+
+			// Deposit our "Created" event.
+			Self::deposit_event(Event::Edited { nft: nft_id, owner: sender });
+
+			Ok(())
+		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::buy_nft())]
+		#[transactional]
 		pub fn buy_nft(
 			origin: OriginFor<T>,
 			nft_id: [u8; 16]
@@ -159,7 +204,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::burn_nft())]
+		#[transactional]
 		pub fn burn_nft(
 			origin: OriginFor<T>,
 			nft_id: [u8; 16]
@@ -170,6 +216,10 @@ pub mod pallet {
 			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft.owner == Some(sender), Error::<T>::NotOwner);
 
+			if let Some(nft_on_sale) = TokenSale::<T>::get(&nft_id) {
+				ensure!(nft_on_sale.in_installment == Some(false), Error::<T>::NFTInInstallment);
+			}
+
 			// Set the price in storage
 			nft.is_burnt = Some(true);
 			TokenById::<T>::insert(&nft_id, nft);
@@ -179,7 +229,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_sale_nft())]
+		#[transactional]
 		pub fn set_sale_nft(
 			origin: OriginFor<T>,
 			nft_id: [u8; 16],
@@ -210,7 +261,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_nft_price())]
+		#[transactional]
 		pub fn set_nft_price(
 			origin: OriginFor<T>,
 			nft_id: [u8; 16],
@@ -259,6 +311,7 @@ pub mod pallet {
 			hash
 		}
 
+		#[require_transactional]
 		pub fn do_transfer(
 			nft_id: [u8; 16],
 			to: T::AccountId,

@@ -271,6 +271,7 @@ impl pallet_nft::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type NFTRandomness = RandomnessCollectiveFlip;
+	type WeightInfo = pallet_nft::weights::SubstrateWeightInfo<Runtime>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -332,7 +333,7 @@ mod benches {
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
-		[pallet_template, TemplateModule]
+		[pallet_nft, PalletNFT]
 	);
 }
 

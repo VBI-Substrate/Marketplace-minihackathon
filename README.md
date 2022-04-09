@@ -21,11 +21,12 @@
     ```
   + [ ] Function:
     + [ ] Mint // (done)
+    + [ ] Edit // (done)
     + [ ] Transfer // a marketplace just buy, not transfer 
     + [ ] transferFrom // a marketplace just buy, not transfer 
     + [ ] Burn // (done)
-    + [ ] balanceOf // 
-    + [ ] ownerOf
+    + [ ] balanceOf 
+    + [ ] ownerOf 
     + [ ] approve // no need cus pallet have no id to get approve for. So we just our own marketplace (1)
     + [ ] getApproved // (1)
     + [ ] setApprovalForAll // (1)
