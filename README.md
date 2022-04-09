@@ -23,9 +23,10 @@
       pub title: Option<String>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
       pub description: Option<String>, // free-form description
       pub media: Option<String>, // URL to associated media, preferably to decentralized, content-addressed storage
+      pub creator: Option<AccountId>,
       pub owner: Option<AccountId>,
       pub royalty: Vec<(T::AccountId, u32)>, 
-      pub co_owner: Option<AccountId>,
+      pub installment_account: Option<AccountId>,
       pub collection_id
     }
     ```
