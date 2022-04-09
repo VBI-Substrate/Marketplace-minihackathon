@@ -14,6 +14,7 @@ fn it_works_for_default_value() {
 			Some(vec!(1)),
 			Some(0),
 			vec!((5, 1)),
+			[0u8; 16]
 		));
 
 		assert_ok!(PalletNFT::set_sale_nft(Origin::signed(1), [0u8; 16], Some(10)));

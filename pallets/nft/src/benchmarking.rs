@@ -13,15 +13,32 @@ use sp_std::vec::Vec;
 benchmarks! {
 	mint_nft {
 		let s in 0 .. 100;
+		let collection_id = [0u8; 16];
+		let caller: T::AccountId = whitelisted_caller();
+
+		NFT::<T>::mint_collection(
+			caller.clone(),
+			collection_id.clone(),
+			Some(vec!(1)),
+			Some(vec!(s.clone().into())),
+		);
+
 		let royalty_account: T::AccountId = account("royalty_account", 2u32, 2u32);
 		let caller: T::AccountId = whitelisted_caller();
 		let title: Option<Vec<u16>> = Some(vec!(s.clone().try_into().unwrap()));
 		let description: Option<Vec<u128>> = Some(vec!(s.clone().into()));
 		let media: Option<Vec<u128>> = Some(vec!(s.clone().into()));
 		let media_hash: Option<Vec<u128>> = Some(vec!(s.clone().into()));
-		let co_owner: Option<T::AccountId> = Some(royalty_account.clone());
+		let installment_account: Option<T::AccountId> = Some(royalty_account.clone());
 		let royalty: Vec<(T::AccountId, u32)> = vec!((royalty_account.clone(), s.clone().into()));
-	}: _(RawOrigin::Signed(caller), title, description, media, media_hash, co_owner, royalty)
+	}: _(RawOrigin::Signed(caller), title, description, media, media_hash, installment_account, royalty, collection_id)
+
+	create_collection {
+		let s in 0 .. 100;
+		let caller: T::AccountId = whitelisted_caller();
+		let title: Option<Vec<u16>> = Some(vec!(s.clone().try_into().unwrap()));
+		let description: Option<Vec<u128>> = Some(vec!(s.clone().into()));
+	}: _(RawOrigin::Signed(caller), title, description)
 
 	edit_nft {
 		let s in 0 .. 100;
@@ -30,8 +47,15 @@ benchmarks! {
 		let royalty_account: T::AccountId = account("royalty_account", 2u32, 2u32);
 		let percent = 1;
 
+		NFT::<T>::mint_collection(
+			caller.clone(),
+			nft_id.clone(),
+			Some(vec!(1)),
+			Some(vec!(s.clone().into())),
+		);
+
 		NFT::<T>::mint(
-			caller,
+			caller.clone(),
 			nft_id.clone(),
 			Some(vec!(1)),
 			Some(vec!(s.clone().into())),
@@ -39,6 +63,7 @@ benchmarks! {
 			Some(vec!(s.clone().into())),
 			Some(royalty_account.clone()),
 			vec!((royalty_account.clone(), percent.clone())),
+			nft_id.clone(),
 		);
 
 		let caller: T::AccountId = whitelisted_caller();
@@ -46,10 +71,27 @@ benchmarks! {
 		let description: Option<Vec<u128>> = Some(vec!(s.clone().into()));
 		let media: Option<Vec<u128>> = Some(vec!(s.clone().into()));
 		let media_hash: Option<Vec<u128>> = Some(vec!(s.clone().into()));
-		let co_owner: Option<T::AccountId> = Some(royalty_account.clone());
+		let installment_account: Option<T::AccountId> = Some(royalty_account.clone());
 		let royalty: Vec<(T::AccountId, u32)> = vec!((royalty_account.clone(), percent.clone()));
 
-	}: _(RawOrigin::Signed(caller), nft_id, title, description, media, media_hash, co_owner, royalty)
+	}: _(RawOrigin::Signed(caller), nft_id, title, description, media, media_hash, installment_account, royalty, nft_id)
+
+	edit_collection {
+		let s in 0 .. 100;
+		let collection_id = [0u8; 16];
+		let caller: T::AccountId = whitelisted_caller();
+
+		NFT::<T>::mint_collection(
+			caller.clone(),
+			collection_id.clone(),
+			Some(vec!(1)),
+			Some(vec!(s.clone().into())),
+		);
+
+		let title: Option<Vec<u16>> = Some(vec!(1));
+		let description: Option<Vec<u128>> = Some(vec!(s.clone().into()));
+
+	}: _(RawOrigin::Signed(caller), collection_id, title, description)
 
 	buy_nft {
 		let s in 0 .. 10000000;
@@ -57,6 +99,13 @@ benchmarks! {
 		let owner: T::AccountId = account("owner", 2u32, 2u32);
 		let royalty_account: T::AccountId = account("royalty_account", 2u32, 2u32);
 		let percent = 1;
+
+		NFT::<T>::mint_collection(
+			caller.clone(),
+			[0u8; 16],
+			Some(vec!(1)),
+			Some(vec!(s.clone().into())),
+		);
 
 		NFT::<T>::mint(
 			owner.clone(),
@@ -67,6 +116,7 @@ benchmarks! {
 			Some(vec!(s.clone().into())),
 			Some(royalty_account.clone()),
 			vec!((royalty_account.clone(), percent.clone())),
+			[0u8; 16]
 		);
 
 		let _ = NFT::<T>::set_sale_nft(RawOrigin::Signed(owner.clone()).into(), [0u8; 16], Some(s.into()));
@@ -81,6 +131,13 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let royalty_account: T::AccountId = account("royalty_account", 2u32, 2u32);
 		let percent = 1;
+
+		NFT::<T>::mint_collection(
+			caller.clone(),
+			[0u8; 16],
+			Some(vec!(1)),
+			Some(vec!(s.clone().into())),
+		);
 		
 		NFT::<T>::mint(
 			caller.clone(),
@@ -91,6 +148,7 @@ benchmarks! {
 			Some(vec!(s.clone().into())),
 			Some(royalty_account.clone()),
 			vec!((royalty_account.clone(), percent.clone())),
+			[0u8; 16]
 		);
 	
 	}: _(RawOrigin::Signed(caller), [0u8; 16], Some(s.into()))
@@ -101,6 +159,13 @@ benchmarks! {
 		let royalty_account: T::AccountId = account("royalty_account", 2u32, 2u32);
 		let percent = 1;
 
+		NFT::<T>::mint_collection(
+			caller.clone(),
+			[0u8; 16],
+			Some(vec!(1)),
+			Some(vec!(s.clone().into())),
+		);
+
 		NFT::<T>::mint(
 			caller.clone(),
 			[0u8; 16],
@@ -110,6 +175,7 @@ benchmarks! {
 			Some(vec!(s.clone().into())),
 			Some(royalty_account.clone()),
 			vec!((royalty_account.clone(), percent.clone())),
+			[0u8; 16]
 		);
 
 		NFT::<T>::set_sale_nft(RawOrigin::Signed(caller.clone()).into(), [0u8; 16], Some(s.into()));
@@ -122,6 +188,13 @@ benchmarks! {
 		let royalty_account: T::AccountId = account("royalty_account", 2u32, 2u32);
 		let percent = 1;
 
+		NFT::<T>::mint_collection(
+			caller.clone(),
+			[0u8; 16],
+			Some(vec!(1)),
+			Some(vec!(s.clone().into())),
+		);
+
 		NFT::<T>::mint(
 			caller.clone(),
 			[0u8; 16],
@@ -131,6 +204,7 @@ benchmarks! {
 			Some(vec!(s.clone().into())),
 			Some(royalty_account.clone()),
 			vec!((royalty_account.clone(), percent.clone())),
+			[0u8; 16]
 		);
 		
 	}: _(RawOrigin::Signed(caller), [0u8; 16])

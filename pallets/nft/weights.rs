@@ -24,33 +24,22 @@
 // 10
 // --json
 // --output
-// ./pallets/nft/src/weights.rs
+// ./pallets/nft/weights.rs
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
 
-pub trait WeightInfo {
-	fn mint_nft() -> Weight;
-	fn create_collection() -> Weight;
-	fn edit_nft() -> Weight;
-	fn edit_collection() -> Weight;
-	fn buy_nft() -> Weight;
-	fn set_sale_nft() -> Weight;
-	fn set_nft_price() -> Weight;
-	fn burn_nft() -> Weight;
-}
-
 /// Weight functions for `pallet_nft`.
-pub struct SubstrateWeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeightInfo<T> {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_nft::WeightInfo for WeightInfo<T> {
 	// Storage: RandomnessCollectiveFlip RandomMaterial (r:1 w:0)
 	// Storage: unknown [0x3a65787472696e7369635f696e646578] (r:1 w:0)
 	// Storage: PalletNFT TokenById (r:1 w:1)
-	fn mint_nft() -> Weight {
+	fn mint_nft(_s: u32, ) -> Weight {
 		(36_924_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -58,20 +47,23 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeightInfo<T> {
 	// Storage: RandomnessCollectiveFlip RandomMaterial (r:1 w:0)
 	// Storage: unknown [0x3a65787472696e7369635f696e646578] (r:1 w:0)
 	// Storage: PalletNFT CollectionById (r:1 w:1)
-	fn create_collection() -> Weight {
+	fn create_collection(s: u32, ) -> Weight {
 		(28_085_000 as Weight)
 			// Standard Error: 2_000
+			.saturating_add((1_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: PalletNFT TokenById (r:1 w:1)
-	fn edit_nft() -> Weight {
+	fn edit_nft(s: u32, ) -> Weight {
 		(26_579_000 as Weight)
+			// Standard Error: 1_000
+			.saturating_add((8_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: PalletNFT CollectionById (r:1 w:1)
-	fn edit_collection() -> Weight {
+	fn edit_collection(_s: u32, ) -> Weight {
 		(23_809_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -79,64 +71,30 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeightInfo<T> {
 	// Storage: PalletNFT TokenById (r:1 w:1)
 	// Storage: PalletNFT TokenSale (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
-	fn buy_nft() -> Weight {
+	fn buy_nft(_s: u32, ) -> Weight {
 		(72_734_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	// Storage: PalletNFT TokenById (r:1 w:0)
 	// Storage: PalletNFT TokenSale (r:1 w:1)
-	fn set_sale_nft() -> Weight {
+	fn set_sale_nft(_s: u32, ) -> Weight {
 		(27_405_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: PalletNFT TokenById (r:1 w:0)
 	// Storage: PalletNFT TokenSale (r:1 w:1)
-	fn set_nft_price() -> Weight {
+	fn set_nft_price(_s: u32, ) -> Weight {
 		(28_423_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: PalletNFT TokenById (r:1 w:1)
 	// Storage: PalletNFT TokenSale (r:1 w:0)
-	fn burn_nft() -> Weight {
+	fn burn_nft(_s: u32, ) -> Weight {
 		(32_354_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-}
-
-impl WeightInfo for () {
-	fn mint_nft() -> Weight {
-		(36_924_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-
-	fn create_collection() -> Weight {
-		(28_085_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-
-	fn edit_nft() -> Weight {
-		(26_579_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-
-	fn edit_collection() -> Weight {
-		(23_809_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-
-	fn buy_nft() -> Weight {
-		(72_734_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-
-	fn set_sale_nft() -> Weight {
-		(27_405_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-
-	fn set_nft_price() -> Weight {
-		(28_423_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-
-	fn burn_nft() -> Weight {
-		(32_354_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
