@@ -22,11 +22,9 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
 
-	// Handles our pallet's currency abstraction
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-	// Struct for holding kitty information
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct NonFungibleToken<T: Config> {
@@ -70,10 +68,8 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// The Currency handler for the kitties pallet.
 		type Currency: Currency<Self::AccountId>;
 
-		/// The type of Randomness we want to specify for this pallet.
 		type NFTRandomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
@@ -87,7 +83,8 @@ pub mod pallet {
 		TransferToSelf,
 		NotForSale,
 		NotSelling,
-		NFTOnSale
+		NFTOnSale,
+		BurntNFT
 	}
 
 	// Events
@@ -103,7 +100,6 @@ pub mod pallet {
 		Transferred { from: T::AccountId, to: T::AccountId, nft: [u8; 16] },
 	}
 
-	/// Maps the kitty struct to the kitty DNA.
 	#[pallet::storage]
 	#[pallet::getter(fn token_by_id)]
 	pub(super) type TokenById<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], NonFungibleToken<T>>;
@@ -126,10 +122,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
-			// Generate unique DNA and Gender using a helper function
+
 			let nft_id = Self::gen_id();
 
-			// Write new kitty to storage by calling helper function
 			let nft = NonFungibleToken::<T> { 
 				title,
 				description,
@@ -141,16 +136,13 @@ pub mod pallet {
 				is_burnt: Some(false)
 			};
 			
-			// Check if the kitty does not already exist in our storage map
 			ensure!(!TokenById::<T>::contains_key(&nft_id), Error::<T>::DuplicateNFT);
 
-			// Write new kitty to storage
 			TokenById::<T>::insert(nft_id, nft);
 
 			// Deposit our "Created" event.
 			Self::deposit_event(Event::Created { nft: nft_id, owner: sender });
 
-			// Returns the DNA of the new kitty if this succeeds
 			Ok(())
 		}
 
@@ -161,7 +153,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
 			let buyer = ensure_signed(origin)?;
-			// Transfer the kitty from seller to buyer as a sale.
+
 			Self::do_transfer(nft_id, buyer)?;
 
 			Ok(())
@@ -196,7 +188,9 @@ pub mod pallet {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
 
-			// Ensure the kitty exists and is called by the kitty owner
+			let nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
+			ensure!(nft.is_burnt == Some(false), Error::<T>::BurntNFT);
+
 			let nft_on_sale = TokenSale::<T>::get(&nft_id);
 			match nft_on_sale {
 				Some(nft_on_sale) => {
@@ -213,8 +207,6 @@ pub mod pallet {
 					Self::deposit_event(Event::SetSaleNFT { nft: nft_id, price: new_price });
 				}
 			}
-			// Deposit a "PriceSet" event.
-
 			Ok(())
 		}
 
@@ -230,24 +222,13 @@ pub mod pallet {
 			// Ensure the kitty exists and is called by the kitty owner
 			let nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft.owner == Some(sender), Error::<T>::NotOwner);
-			ensure!(nft.is_burnt == Some(false), Error::<T>::NFTInInstallment);
+			ensure!(nft.is_burnt == Some(false), Error::<T>::BurntNFT);
 
-			let nft_on_sale = TokenSale::<T>::get(&nft_id);
-			match nft_on_sale {
-				Some(nft_on_sale) => {
-					let mut tmp_nft = nft_on_sale;
-					tmp_nft.price = new_price;
-					TokenSale::<T>::insert(&nft_id, tmp_nft);
-				},
-				None => {
-					let token_sale = Sale::<T> {
-						owner: nft.owner,
-						price: new_price,
-						in_installment: Some(false)
-					};
-					TokenSale::<T>::insert(&nft_id, token_sale);
-				}
-			}
+			let mut nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NotSelling)?;
+			ensure!(nft_on_sale.in_installment == Some(false), Error::<T>::NFTInInstallment);
+
+			nft_on_sale.price = new_price;
+			TokenSale::<T>::insert(&nft_id, nft_on_sale);
 
 			// Deposit a "PriceSet" event.
 			Self::deposit_event(Event::PriceSet { nft: nft_id, price: new_price });
@@ -288,6 +269,7 @@ pub mod pallet {
 			let mut nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft_on_sale.price != None, Error::<T>::NotSelling);
 			ensure!(from != Some(to.clone()), Error::<T>::TransferToSelf);
+			ensure!(nft.is_burnt == Some(false), Error::<T>::BurntNFT);
 			
 			let old_owner = from.unwrap();
 			let new_owner = to;
