@@ -43,6 +43,8 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use pallet_nft;
 
+pub use pallet_marketplace;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -274,6 +276,13 @@ impl pallet_nft::Config for Runtime {
 	type WeightInfo = pallet_nft::weights::SubstrateWeightInfo<Runtime>;
 }
 
+impl pallet_marketplace::Config for Runtime {
+	type Event = Event;
+	type CurrencyMarketplace = Balances;
+	type NFTRandomnessMarketplace = RandomnessCollectiveFlip;
+	type WeightInfoMarketplace = pallet_marketplace::weights::SubstrateWeightInfo<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -291,6 +300,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		PalletNFT: pallet_nft,
+		PalletMarketPlace: pallet_marketplace
 	}
 );
 
