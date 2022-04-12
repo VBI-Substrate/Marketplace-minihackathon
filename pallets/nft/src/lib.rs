@@ -31,58 +31,39 @@ pub mod pallet {
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
-	pub struct NFTCollection<T: Config> {
+	pub struct NFTCollection<Account> {
 		pub title: Option<Vec<u16>>,
 		pub description: Option<Vec<u128>>,
-		pub creator: Option<T::AccountId>,
+		pub creator: Option<Account>,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
-	pub struct NonFungibleToken<T: Config> {
+	pub struct NonFungibleToken<Account> {
 		pub title: Option<Vec<u16>>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
 		pub description: Option<Vec<u128>>, // free-form description
 		pub media: Option<Vec<u128>>, // URL to associated media, preferably to decentralized, content-addressed storage
 		pub media_hash: Option<Vec<u128>>, // Base64-encoded sha256 hash of content referenced by the `media` field. Required if `media` is included.
-		pub creator: Option<T::AccountId>,
-		pub owner: Option<T::AccountId>,
-		pub installment_account: Option<T::AccountId>, // paying installment
-		pub royalty: Vec<(T::AccountId, u32)>,
+		pub creator: Option<Account>,
+		pub owner: Option<Account>,
+		pub installment_account: Option<Account>, // paying installment
+		pub royalty: Vec<(Account, u32)>,
 		pub is_burnt: Option<bool>,
 		pub collection_id: [u8; 16]
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
-	pub struct Sale<T: Config>{
-		pub owner: Option<T::AccountId>,
-		pub price: Option<BalanceOf<T>>,
+	pub struct Sale<Account, Balance>{
+		pub owner: Option<Account>,
+		pub price: Option<Balance>,
 		pub in_installment: Option<bool>
 	}
-
-	impl<T: Config> MaxEncodedLen for NFTCollection<T> {
-        fn max_encoded_len() -> usize {
-            T::AccountId::max_encoded_len() * 2
-        }
-    }
-
-	impl<T: Config> MaxEncodedLen for NonFungibleToken<T> {
-        fn max_encoded_len() -> usize {
-            T::AccountId::max_encoded_len() * 2
-        }
-    }
-
-	impl<T: Config> MaxEncodedLen for Sale<T> {
-        fn max_encoded_len() -> usize {
-            T::AccountId::max_encoded_len() * 2
-        }
-    }
-
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	// Configure the pallet by specifying the parameters and types on which it depends.
@@ -132,15 +113,15 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn collection_by_id)]
-	pub(super) type CollectionById<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], NFTCollection<T>>;
+	pub(super) type CollectionById<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], NFTCollection<T::AccountId>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn token_by_id)]
-	pub(super) type TokenById<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], NonFungibleToken<T>>;
+	pub(super) type TokenById<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], NonFungibleToken<T::AccountId>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn token_sale)]
-	pub(super) type TokenSale<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], Sale<T>>;
+	pub(super) type TokenSale<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], Sale<T::AccountId, BalanceOf<T>>>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -161,7 +142,7 @@ pub mod pallet {
 
 			let nft_id = Self::gen_id();
 
-			let nft = NonFungibleToken::<T> { 
+			let nft = NonFungibleToken::<T::AccountId> { 
 				title,
 				description,
 				media,
@@ -196,7 +177,7 @@ pub mod pallet {
 
 			let collection_id = Self::gen_id();
 
-			let collection = NFTCollection::<T> { 
+			let collection = NFTCollection::<T::AccountId> { 
 				title,
 				description,
 				creator: Some(sender.clone()),
@@ -331,7 +312,7 @@ pub mod pallet {
 					Self::deposit_event(Event::NFTOnSale { nft: nft_id, price: nft_on_sale.price });
 				},
 				None => {
-					let token_sale = Sale::<T> {
+					let token_sale = Sale::<T::AccountId, BalanceOf<T>> {
 						owner: Some(sender),
 						price: new_price,
 						in_installment: Some(false)
@@ -465,7 +446,7 @@ pub mod pallet {
 			royalty: Vec<(T::AccountId, u32)>,
 			collection_id: [u8; 16],
 		) -> DispatchResult {
-			let nft = NonFungibleToken::<T> { 
+			let nft = NonFungibleToken::<T::AccountId> { 
 				title,
 				description,
 				media,
@@ -494,7 +475,7 @@ pub mod pallet {
 			title: Option<Vec<u16>>,
 			description: Option<Vec<u128>>,
 		) -> DispatchResult {
-			let collection = NFTCollection::<T> { 
+			let collection = NFTCollection::<T::AccountId> { 
 				title,
 				description,
 				creator: Some(sender.clone()),
