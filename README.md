@@ -12,6 +12,11 @@
     ```
 
     ```rust 
+    pub struct PayInstallment - nft_id {
+      buyer,
+      creator
+    }
+
     pub struct NFTCollection {
       name,
       description,

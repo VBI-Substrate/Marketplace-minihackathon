@@ -266,12 +266,17 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const DataDepositPerByte: Balance = 1;
+}
+
 /// Configure the pallet-template in pallets/template.
 impl pallet_nft::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type NFTRandomness = RandomnessCollectiveFlip;
 	type WeightInfo = pallet_nft::weights::SubstrateWeightInfo<Runtime>;
+	type DataDepositPerByte = DataDepositPerByte;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.

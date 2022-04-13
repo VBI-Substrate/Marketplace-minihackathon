@@ -1,5 +1,5 @@
 use crate as pallet_nft;
-use frame_support::traits::{ConstU16, ConstU32, ConstU64, ConstU128};
+use frame_support::{traits::{ConstU16, ConstU32, ConstU64, ConstU128}, parameter_types};
 use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
@@ -69,11 +69,18 @@ impl pallet_randomness_collective_flip::Config for Test {
 	
 }
 
+pub type Balance = u128;
+
+parameter_types! {
+	pub const DataDepositPerByte: Balance = 1;
+}
+
 impl pallet_nft::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type NFTRandomness = RandomnessCollectiveFlip;
 	type WeightInfo = ();
+	type DataDepositPerByte = DataDepositPerByte;
 }
 
 // Build genesis storage according to the mock runtime.

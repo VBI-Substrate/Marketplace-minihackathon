@@ -70,7 +70,12 @@ pub fn development_config() -> Result<ChainSpec, String> {
 		None,
 		None,
 		// Properties
-		None,
+		Some(
+			serde_json::from_str(
+				"{\"tokenDecimals\": 12, \"tokenSymbol\": \"KIT\", \"SS58Prefix\": 28}",
+			)
+			.expect("Provided valid json map"),
+		),
 		// Extensions
 		None,
 	))
