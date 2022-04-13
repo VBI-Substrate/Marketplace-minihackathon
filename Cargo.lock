@@ -3618,6 +3618,7 @@ dependencies = [
  "pallet-balances",
  "pallet-grandpa",
  "pallet-nft",
+ "pallet-pay-installment",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-timestamp",
@@ -3898,6 +3899,24 @@ dependencies = [
  "frame-system",
  "pallet-balances",
  "pallet-randomness-collective-flip",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-pay-installment"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-nft",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

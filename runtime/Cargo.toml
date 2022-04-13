@@ -49,6 +49,7 @@ hex-literal = { version = "0.3.4", optional = true }
 
 # Local Dependencies
 pallet-nft = { version = "4.0.0-dev", default-features = false, path = "../pallets/nft" }
+pallet-pay-installment = { version = "4.0.0-dev", default-features = false, path = "../pallets/pay_installment" }
 
 [build-dependencies]
 substrate-wasm-builder = { version = "5.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17" }
@@ -68,6 +69,7 @@ std = [
 	"pallet-randomness-collective-flip/std",
 	"pallet-sudo/std",
 	"pallet-nft/std",
+	"pallet-pay-installment/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
