@@ -19,6 +19,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		PalletNFT: pallet_nft::{Pallet, Call, Storage, Event<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage},
 		Balances: pallet_balances::{Pallet, Call, Storage, Event<T>, Config<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet},
 	}
@@ -65,6 +66,14 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 }
 
+impl pallet_timestamp::Config for Test {
+	/// A timestamp: milliseconds since the unix epoch.
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type MinimumPeriod = ();
+	type WeightInfo = ();
+}
+
 impl pallet_randomness_collective_flip::Config for Test {
 	
 }
@@ -81,6 +90,8 @@ impl pallet_nft::Config for Test {
 	type NFTRandomness = RandomnessCollectiveFlip;
 	type WeightInfo = ();
 	type DataDepositPerByte = DataDepositPerByte;
+	type Timestamp = Timestamp;
+	type Moment = u64;
 }
 
 // Build genesis storage according to the mock runtime.

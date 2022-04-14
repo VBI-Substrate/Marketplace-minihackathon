@@ -48,12 +48,14 @@ fn it_works_for_default_value() {
 			[1u8; 16]
 		));
 
-		assert_ok!(PalletNFT::set_sale_nft(Origin::signed(1), [0u8; 16], Some(10)));
+		assert_ok!(PalletNFT::set_sale_nft(Origin::signed(1), [0u8; 16], 10u128));
 
-		assert_ok!(PalletNFT::buy_nft(Origin::signed(2), [0u8; 16]));
+		// assert_ok!(PalletNFT::buy_nft(Origin::signed(2), [0u8; 16]));
 
-		assert_ok!(PalletNFT::burn_nft(Origin::signed(2), [0u8; 16]));
+		assert_ok!(PalletNFT::pay_installment(Origin::signed(2), [0u8; 16], 2, 5u128));
 
-		assert_ok!(PalletNFT::destroy_collection(Origin::signed(1), [1u8; 16]));
+		// assert_ok!(PalletNFT::burn_nft(Origin::signed(2), [0u8; 16]));
+
+		// assert_ok!(PalletNFT::destroy_collection(Origin::signed(1), [1u8; 16]));
 	});
 }

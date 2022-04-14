@@ -16,11 +16,12 @@ pub mod weights;
 pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{tokens::ExistenceRequirement, Currency, Randomness, ReservableCurrency},
+		sp_runtime::traits::{Scale},
+		traits::{tokens::ExistenceRequirement, Currency, Randomness, ReservableCurrency, Time},
 		transactional, require_transactional
 	};
 	use frame_system::pallet_prelude::*;
-	use scale_info::TypeInfo;
+	use scale_info::{TypeInfo, StaticTypeInfo};
 	use sp_io::hashing::blake2_128;
 	use sp_std::vec::Vec;
 	use crate::weights::WeightInfo;
@@ -59,6 +60,15 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
+	pub struct PayInstallmentOrder<Account, Balance, Time> {
+		pub creator: Account,
+		pub pay_at: Time,
+        pub periods_left: u8,
+		pub paid: Balance
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
 	pub struct Sale<Account, Balance>{
 		pub owner: Option<Account>,
 		pub price: Option<Balance>,
@@ -85,6 +95,17 @@ pub mod pallet {
 		/// Deposit required for per byte.
 		#[pallet::constant]
 		type DataDepositPerByte: Get<BalanceOf<Self>>;
+
+		type Moment: Parameter
+			+ Default
+			+ Scale<Self::BlockNumber, Output = Self::Moment>
+			+ Copy
+			+ MaxEncodedLen
+			+ StaticTypeInfo
+			+ MaybeSerializeDeserialize
+			+ Send;
+
+		type Timestamp: Time<Moment = Self::Moment>;
 	}
 
 	// Errors
@@ -101,7 +122,10 @@ pub mod pallet {
 		NotSelling,
 		NFTOnSale,
 		BurntNFT,
-		TokenInCollection
+		TokenInCollection,
+		NoOrder,
+		FromOneToSixMonths,
+		PriceNotMatch,
 	}
 
 	// Events
@@ -119,6 +143,7 @@ pub mod pallet {
 		DestroyCollection { collection: [u8; 16] },
 		Bought { seller: T::AccountId, buyer: T::AccountId, nft: [u8; 16], price: BalanceOf<T> },
 		Transferred { from: T::AccountId, to: T::AccountId, nft: [u8; 16] },
+		Paid { nft_id: [u8; 16], periods_left: u8 },
 	}
 
 	#[pallet::storage]
@@ -133,6 +158,10 @@ pub mod pallet {
 	#[pallet::getter(fn token_sale)]
 	pub(super) type TokenSale<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], Sale<T::AccountId, BalanceOf<T>>>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn order_by_id)]
+	pub(super) type OrderByTokenId<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], PayInstallmentOrder<T::AccountId, BalanceOf<T>, T::Moment>>;
+	
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(<T as Config>::WeightInfo::mint_nft())]
@@ -333,6 +362,59 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn pay_installment(
+			origin: OriginFor<T>,
+			nft_id: [u8; 16],
+			periods: u8,
+			paid: BalanceOf<T>
+		) -> DispatchResult {
+			// Make sure the caller is from a signed origin
+			let sender = ensure_signed(origin)?;
+
+			ensure!(periods > 0, Error::<T>::FromOneToSixMonths);
+			ensure!(periods < 7, Error::<T>::FromOneToSixMonths);
+
+			let nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NotSelling)?;
+
+			let order = OrderByTokenId::<T>::get(&nft_id);
+			let periods_left = periods.clone() - 1;
+			let mut redundant:BalanceOf<T> = Self::u8_to_balance(0u8);
+			match order {
+				Some(mut order) => {
+					if periods_left == 0 && order.paid >= nft_on_sale.price.unwrap() {
+						redundant = order.paid.saturating_sub(nft_on_sale.price.unwrap());
+						OrderByTokenId::<T>::remove(&nft_id);
+						// transfer
+						TokenSale::<T>::remove(&nft_id);
+						let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
+						nft.owner = Some(sender.clone());
+						TokenById::<T>::insert(&nft_id, nft);
+					} else {
+						order.periods_left = periods_left;
+						order.paid = order.paid.saturating_add(paid);
+						OrderByTokenId::<T>::insert(&nft_id, order);
+					}
+				},
+				None => {
+					let order = PayInstallmentOrder::<T::AccountId, BalanceOf<T>, T::Moment> {
+						creator: sender.clone(),
+						pay_at: T::Timestamp::now(),
+						paid,
+						periods_left
+					};
+					OrderByTokenId::<T>::insert(&nft_id, order);
+				}
+			}
+
+			T::Currency::transfer(&sender, &nft_on_sale.owner.unwrap(), paid.saturating_sub(redundant), ExistenceRequirement::KeepAlive)?;
+
+			Self::deposit_event(Event::Paid { nft_id, periods_left });
+
+			Ok(())
+		}
+
 		#[pallet::weight(<T as Config>::WeightInfo::burn_nft())]
 		#[transactional]
 		pub fn burn_nft(
@@ -342,7 +424,7 @@ pub mod pallet {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
 
-			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
+			let nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft.owner == Some(sender.clone()), Error::<T>::NotOwner);
 
 			if let Some(nft_on_sale) = TokenSale::<T>::get(&nft_id) {
@@ -364,7 +446,7 @@ pub mod pallet {
 		pub fn set_sale_nft(
 			origin: OriginFor<T>,
 			nft_id: [u8; 16],
-			new_price: Option<BalanceOf<T>>,
+			new_price: BalanceOf<T>,
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
@@ -384,13 +466,13 @@ pub mod pallet {
 
 					let token_sale = Sale::<T::AccountId, BalanceOf<T>> {
 						owner: Some(sender),
-						price: new_price,
+						price: Some(new_price.clone()),
 						in_installment: Some(false),
 						deposit: Some(data_deposit)
 					};
 					// Set the price in storage
 					TokenSale::<T>::insert(&nft_id, token_sale);
-					Self::deposit_event(Event::SetSaleNFT { nft: nft_id, price: new_price });
+					Self::deposit_event(Event::SetSaleNFT { nft: nft_id, price: Some(new_price) });
 				}
 			}
 			Ok(())
@@ -401,7 +483,7 @@ pub mod pallet {
 		pub fn set_nft_price(
 			origin: OriginFor<T>,
 			nft_id: [u8; 16],
-			new_price: Option<BalanceOf<T>>,
+			new_price: BalanceOf<T>,
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
@@ -413,11 +495,11 @@ pub mod pallet {
 			let mut nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NotSelling)?;
 			ensure!(nft_on_sale.in_installment == Some(false), Error::<T>::NFTInInstallment);
 
-			nft_on_sale.price = new_price;
+			nft_on_sale.price = Some(new_price.clone());
 			TokenSale::<T>::insert(&nft_id, nft_on_sale);
 
 			// Deposit a "PriceSet" event.
-			Self::deposit_event(Event::PriceSet { nft: nft_id, price: new_price });
+			Self::deposit_event(Event::PriceSet { nft: nft_id, price: Some(new_price) });
 
 			Ok(())
 		}
@@ -504,6 +586,10 @@ pub mod pallet {
 
 		pub fn u8_to_balance(input: u8) -> BalanceOf<T> {
 			input.into()
+		}
+
+		pub fn balance_to_u8(input: BalanceOf<T>) -> u8 {
+			TryInto::<u8>::try_into(input).ok().unwrap()
 		}
 
 		// For test and benchmark more quickly
