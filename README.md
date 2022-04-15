@@ -76,3 +76,7 @@
 
 ## Reference
 + https://dev.to/edge-and-node/uploading-files-to-ipfs-from-a-web-application-50a
+
+## Note
++ Hoi String input
++ Cac loai unsigned tx

@@ -37,25 +37,25 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct NFTCollection<Account, Balance> {
-		pub title: Option<Vec<u8>>,
+		pub title: Vec<u8>,
 		pub description: Option<Vec<u8>>,
-		pub creator: Option<Account>,
-		pub deposit: Option<Balance>
+		pub creator: Account,
+		pub deposit: Balance
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct NonFungibleToken<Account, Balance> {
-		pub title: Option<Vec<u8>>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
+		pub title: Vec<u8>, // ex. "Arch Nemesis: Mail Carrier" or "Parcel #5055"
 		pub description: Option<Vec<u8>>, // free-form description
-		pub media: Option<Vec<u8>>, // URL to associated media, preferably to decentralized, content-addressed storage
-		pub media_hash: Option<Vec<u8>>, // Base64-encoded sha256 hash of content referenced by the `media` field. Required if `media` is included.
-		pub creator: Option<Account>,
-		pub owner: Option<Account>,
+		pub media: Vec<u8>, // URL to associated media, preferably to decentralized, content-addressed storage
+		pub media_hash: Vec<u8>, // Base64-encoded sha256 hash of content referenced by the `media` field. Required if `media` is included.
+		pub creator: Account,
+		pub owner: Account,
 		pub installment_account: Option<Account>, // paying installment
-		pub royalty: Vec<(Account, u8)>,
+		pub royalty: Option<Vec<(Account, u8)>>,
 		pub collection_id: [u8; 16],
-		pub deposit: Option<Balance>
+		pub deposit: Balance
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -168,12 +168,12 @@ pub mod pallet {
 		#[transactional]
 		pub fn mint_nft(
 			origin: OriginFor<T>,
-			title: Option<Vec<u8>>,
+			title: Vec<u8>,
 			description: Option<Vec<u8>>,
-			media: Option<Vec<u8>>,
-			media_hash: Option<Vec<u8>>,
+			media: Vec<u8>,
+			media_hash: Vec<u8>,
 			installment_account: Option<T::AccountId>,
-			royalty: Vec<(T::AccountId, u8)>,
+			royalty: Option<Vec<(T::AccountId, u8)>>,
 			collection_id: [u8; 16]
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
@@ -191,12 +191,12 @@ pub mod pallet {
 				description,
 				media,
 				media_hash,
-				creator: Some(sender.clone()),
-				owner: Some(sender.clone()),
+				creator: sender.clone(),
+				owner: sender.clone(),
 				installment_account,
 				royalty,
 				collection_id,
-				deposit: Some(data_deposit)
+				deposit: data_deposit
 			};
 			
 			ensure!(!TokenById::<T>::contains_key(&nft_id), Error::<T>::DuplicateNFT);
@@ -213,8 +213,8 @@ pub mod pallet {
 		#[transactional]
 		pub fn create_collection(
 			origin: OriginFor<T>,
-			title: Option<Vec<u8>>,
-			description: Option<Vec<u8>>,
+			title: Vec<u8>,
+			description: Option<Vec<u8>>
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
@@ -229,8 +229,8 @@ pub mod pallet {
 			let collection = NFTCollection::<T::AccountId, BalanceOf<T>> { 
 				title,
 				description,
-				creator: Some(sender.clone()),
-				deposit: Some(data_deposit)
+				creator: sender.clone(),
+				deposit: data_deposit
 			};
 			
 			ensure!(!CollectionById::<T>::contains_key(&collection_id), Error::<T>::DuplicateCollection);
@@ -254,7 +254,7 @@ pub mod pallet {
 
 			ensure!(CollectionById::<T>::contains_key(&collection_id), Error::<T>::NoCollection);
 			let collection = CollectionById::<T>::get(collection_id.clone()).unwrap();
-			ensure!(collection.creator.unwrap() == sender.clone(), Error::<T>::NotOwner);
+			ensure!(collection.creator == sender.clone(), Error::<T>::NotOwner);
 
 			let mut check = 0;
 			for nft in TokenById::<T>::iter_values() {
@@ -266,7 +266,7 @@ pub mod pallet {
 
 			ensure!(check == 0, Error::<T>::TokenInCollection);
 
-			T::Currency::unreserve(&sender, collection.deposit.unwrap());
+			T::Currency::unreserve(&sender, collection.deposit);
 
 			CollectionById::<T>::remove(collection_id.clone());
 
@@ -281,19 +281,19 @@ pub mod pallet {
 		pub fn edit_nft(
 			origin: OriginFor<T>,
 			nft_id: [u8; 16],
-			title: Option<Vec<u8>>,
+			title: Vec<u8>,
 			description: Option<Vec<u8>>,
-			media: Option<Vec<u8>>,
-			media_hash: Option<Vec<u8>>,
+			media: Vec<u8>,
+			media_hash: Vec<u8>,
 			installment_account: Option<T::AccountId>,
-			royalty: Vec<(T::AccountId, u8)>,
+			royalty: Option<Vec<(T::AccountId, u8)>>,
 			collection_id: [u8; 16]
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
 
 			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
-			ensure!(nft.owner == Some(sender.clone()), Error::<T>::NotOwner);
+			ensure!(nft.owner == sender.clone(), Error::<T>::NotOwner);
 
 			let data_compressed:u32 = u32::try_from(title.len()).unwrap().saturating_add(u32::try_from(description.len()).unwrap()).saturating_add(u32::try_from(media.len()).unwrap()).saturating_add(u32::try_from(media_hash.len()).unwrap()).saturating_add(u32::try_from(royalty.len()).unwrap().saturating_mul(16)).saturating_add(u32::try_from(collection_id.len()).unwrap()).saturating_add(32);
 			let data_deposit = T::DataDepositPerByte::get().saturating_mul(data_compressed.into());
@@ -307,7 +307,7 @@ pub mod pallet {
 			nft.installment_account = installment_account;
 			nft.royalty = royalty;
 			nft.collection_id = collection_id;
-			nft.deposit = Some(data_deposit);
+			nft.deposit = data_deposit;
 
 			TokenById::<T>::insert(nft_id, nft);
 
@@ -322,14 +322,14 @@ pub mod pallet {
 		pub fn edit_collection(
 			origin: OriginFor<T>,
 			collection_id: [u8; 16],
-			title: Option<Vec<u8>>,
+			title: Vec<u8>,
 			description: Option<Vec<u8>>,
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
 
 			let mut collection = CollectionById::<T>::get(&collection_id).ok_or(Error::<T>::NoCollection)?;
-			ensure!(collection.creator == Some(sender.clone()), Error::<T>::NotOwner);
+			ensure!(collection.creator == sender.clone(), Error::<T>::NotOwner);
 
 			let data_compressed:u32 = u32::try_from(title.len()).unwrap().saturating_add(u32::try_from(description.len()).unwrap()).saturating_add(16);
 			let data_deposit = T::DataDepositPerByte::get().saturating_mul(data_compressed.into());
@@ -338,7 +338,7 @@ pub mod pallet {
 			
 			collection.title = title;
 			collection.description = description;
-			collection.deposit = Some(data_deposit);
+			collection.deposit = data_deposit;
 			
 			CollectionById::<T>::insert(collection_id, collection);
 
@@ -389,7 +389,7 @@ pub mod pallet {
 						// transfer
 						TokenSale::<T>::remove(&nft_id);
 						let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
-						nft.owner = Some(sender.clone());
+						nft.owner = sender.clone();
 						TokenById::<T>::insert(&nft_id, nft);
 					} else {
 						order.periods_left = periods_left;
@@ -425,13 +425,13 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 
 			let nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
-			ensure!(nft.owner == Some(sender.clone()), Error::<T>::NotOwner);
+			ensure!(nft.owner == sender.clone(), Error::<T>::NotOwner);
 
 			if let Some(nft_on_sale) = TokenSale::<T>::get(&nft_id) {
 				ensure!(nft_on_sale.in_installment == Some(false), Error::<T>::NFTInInstallment);
 			}
 
-			T::Currency::unreserve(&sender, nft.deposit.unwrap());
+			T::Currency::unreserve(&sender, nft.deposit);
 
 			// Set the price in storage
 			TokenById::<T>::remove(&nft_id);
@@ -490,7 +490,7 @@ pub mod pallet {
 
 			// Ensure the kitty exists and is called by the kitty owner
 			let nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
-			ensure!(nft.owner == Some(sender), Error::<T>::NotOwner);
+			ensure!(nft.owner == sender, Error::<T>::NotOwner);
 
 			let mut nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NotSelling)?;
 			ensure!(nft_on_sale.in_installment == Some(false), Error::<T>::NFTInInstallment);
@@ -537,15 +537,15 @@ pub mod pallet {
 
 			let mut nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft_on_sale.price != None, Error::<T>::NotSelling);
-			ensure!(from != Some(to.clone()), Error::<T>::TransferToSelf);
+			ensure!(from != to.clone(), Error::<T>::TransferToSelf);
 			
-			let old_owner = from.unwrap();
+			let old_owner = from;
 			let new_owner = to;
 
 			let royalty = nft.royalty.clone();
 			let mut total_perpetual:BalanceOf<T> = 0u32.into();
 			if royalty.len()>0 {
-				for (k, percent) in royalty.iter() {
+				for (k, percent) in royalty.unwrap().iter() {
 					let key = k.clone();
 					if key != old_owner.clone() {
 						let percent_type_balance:BalanceOf<T> = Self::u8_to_balance(*percent);
@@ -568,13 +568,13 @@ pub mod pallet {
 
 			// Transfer succeeded, update the kitty owner and reset the price to `None`.
 			let default_price:BalanceOf<T> = 0u32.into();
-			nft.owner = Some(new_owner.clone());
+			nft.owner = new_owner.clone();
 			nft_on_sale.owner = Some(new_owner.clone());
 			nft_on_sale.price = Some(default_price.clone());
 			
-			T::Currency::unreserve(&old_owner, nft.deposit.unwrap().saturating_add(nft_on_sale.deposit.unwrap()));
+			T::Currency::unreserve(&old_owner, nft.deposit.saturating_add(nft_on_sale.deposit.unwrap()));
 			
-			nft.deposit = Some(default_price.clone());
+			nft.deposit = default_price.clone();
 			// Write updates to storage
 			TokenById::<T>::insert(&nft_id, nft);
 			TokenSale::<T>::remove(&nft_id);
@@ -596,12 +596,12 @@ pub mod pallet {
 		pub fn mint(
 			sender: T::AccountId,
 			nft_id: [u8; 16],
-			title: Option<Vec<u8>>,
+			title: Vec<u8>,
 			description: Option<Vec<u8>>,
-			media: Option<Vec<u8>>,
-			media_hash: Option<Vec<u8>>,
+			media: Vec<u8>,
+			media_hash: Vec<u8>,
 			installment_account: Option<T::AccountId>,
-			royalty: Vec<(T::AccountId, u8)>,
+			royalty: Option<Vec<(T::AccountId, u8)>>,
 			collection_id: [u8; 16],
 		) -> DispatchResult {
 			let default_deposit = Self::u8_to_balance(0u8);
@@ -611,12 +611,12 @@ pub mod pallet {
 				description,
 				media,
 				media_hash,
-				creator: Some(sender.clone()),
-				owner: Some(sender.clone()),
+				creator: sender.clone(),
+				owner: sender.clone(),
 				installment_account,
 				royalty,
 				collection_id,
-				deposit: Some(default_deposit)
+				deposit: default_deposit
 			};
 			
 			ensure!(!TokenById::<T>::contains_key(&nft_id), Error::<T>::DuplicateNFT);
@@ -632,16 +632,16 @@ pub mod pallet {
 		pub fn mint_collection(
 			sender: T::AccountId,
 			collection_id: [u8; 16],
-			title: Option<Vec<u8>>,
+			title: Vec<u8>,
 			description: Option<Vec<u8>>,
 		) -> DispatchResult {
 			let default_deposit = Self::u8_to_balance(0u8);
 
 			let collection = NFTCollection::<T::AccountId, BalanceOf<T>> { 
-				title,
+				title: title,
 				description,
-				creator: Some(sender.clone()),
-				deposit: Some(default_deposit)
+				creator: sender.clone(),
+				deposit: default_deposit
 			};
 			
 			ensure!(!CollectionById::<T>::contains_key(&collection_id), Error::<T>::DuplicateCollection);
@@ -651,6 +651,12 @@ pub mod pallet {
 			// Deposit our "Created" event.
 			Self::deposit_event(Event::CreatedCollection { collection: collection_id, owner: sender });
 
+			Ok(())
+		}
+
+		pub fn check_installment_orders() -> DispatchResult {
+			
+			
 			Ok(())
 		}
 	}
