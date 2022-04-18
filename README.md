@@ -7,8 +7,24 @@
     #[pallet::storage]
     pub(super) type TokenById<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], NonFungibleToken<T>>;
 
+    // new remove
     #[pallet::storage]
     pub(super) type TokenSale<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], Sale<T>>;
+
+    // new add
+    /// Token existence check by owner, collection ID, token ID.
+    #[pallet::storage]
+    #[pallet::getter(fn tokens_by_owner)]
+    pub type TokensByOwner<T: Config> = StorageNMap<
+      _,
+      (
+        NMapKey<Blake2_128Concat, T::AccountId>, // owner
+        NMapKey<Blake2_128Concat, T::ClassId>,
+        NMapKey<Blake2_128Concat, T::TokenId>,
+      ),
+      NFTCollection<T>,
+      ValueQuery,
+    >;
     ```
 
     ```rust 
@@ -32,8 +48,13 @@
       pub owner: Option<AccountId>,
       pub royalty: Vec<(T::AccountId, u32)>, 
       pub installment_account: Option<AccountId>,
-      pub collection_id
+      pub collection_id,
+      // new add
+      pub sale: Sale
     }
+
+    // new remove
+    pub struct Sale
     ```
   + [ ] Function:
     + [ ] Mint // (done)
@@ -71,12 +92,5 @@
 ## Flow notes
 + Backend Hash -> send hash to contract -> update metadata on contract -> emit event -> get uri from event -> update storage. 
 
-
-
-
 ## Reference
 + https://dev.to/edge-and-node/uploading-files-to-ipfs-from-a-web-application-50a
-
-## Note
-+ Hoi String input
-+ Cac loai unsigned tx

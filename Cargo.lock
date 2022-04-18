@@ -3937,6 +3937,7 @@ dependencies = [
  "lite-json",
  "log",
  "pallet-nft",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "serde",

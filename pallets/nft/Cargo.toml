@@ -40,7 +40,7 @@ std = [
 	"frame-benchmarking/std",
 	"sp-io/std",
 	"sp-std/std",
-	"pallet-timestamp/std"
+	"pallet-timestamp/std",
 ]
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]

@@ -1,0 +1,45 @@
+For idols/kol/content creator/sport star creator to create nft
+Slide 1
+1. Creator
+  a. Bring in another source of income with their own brains and reputations: Recently, when the world is suffered from Covid 19, main source of income of these people has been cut. Singer don't have any tour show, can't do MVs, Matches of sports teams cannot take place. But this bring us an oppotunity to give them another source of income, NFT. They can sell NFT to their fans as an picture or even videos, music, or who knows... . They can earn from selling NFT and royalty fee. But for now, with limited capabilities, we can only do NFT marketplace.
+  b. Make them even more famous: People talking, buy and sell their NFT can make them even more famous.
+2. Fans
+  a. A way to contribute to their idols: As a fans, people really want to contribute to who they love, who they think deserve for the hardwork and creativity.
+  b. A way to invest, make collections: The idol famous, the creative and unique NFT will make their NFT's price go even higher
+  c.Give them oppotunities to interact with their idol: In our marketplace, every time you buy NFT from an idol, you will accumulate points. If the points reach a certain milestone that corresponds to a reward (talks, concert tickets, private shows,...) that the idols set, then the fans will get those privileges.
+  d. Provide another way to purchase NFT, pay installment: For those people who don't have much amount of token at a time, they can split payments with equal amount of tokens with no interest.
+
+Slide 2:
+  1. Ensure the ownership of the NFT: Using blockchain, we can ensure the ownership of the NFT
+  2. Exchange NFT eaily and transparently
+  3. Tokenomic?
+
+Slide 3: Tokenomic? (tham khao bepay)
+
+Slide 4: Type of Digital Assets (chac la bo di a)
+
+Slide 5: Features:
+  1. Creator (what about edit)
+    - Create collection
+    - Destroy collection
+    - Mint NFT
+    - Burn NFT
+    - Set rewards
+  2. NFT Owner
+    - Sale NFT
+    - Edit price
+  3. NFT Buyer
+    - Buy NFT
+    - Pay installment NFT
+
+Slide 6: More features
+  1. (e k hieu lam)
+  2. ...
+  3. ...
+  4. (mua thoi, thue lam gi a? chac la bo di thoi)
+  5. (e k hieu lam)
+  6. Multi Owner NFT feature
+  7. Cross-chain bridge
+  8. DAO
+  9. Social network: Creators can make their community more active, more famous, earn more money
+  10. Digital Identity

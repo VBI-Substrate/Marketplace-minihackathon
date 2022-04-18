@@ -22,7 +22,11 @@ pub mod pallet {
 		},
 	};
 	use sp_std::str;
-
+	use frame_support::{
+		traits::Time,
+		sp_runtime::traits::Saturating
+	};
+	use sp_runtime::SaturatedConversion;
 
 	/// Defines application identifier for crypto keys of this module.
 	///
@@ -68,7 +72,7 @@ pub mod pallet {
 	}
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + CreateSignedTransaction<Call<Self>> + pallet_nft::Config {
+	pub trait Config: frame_system::Config + CreateSignedTransaction<Call<Self>> + pallet_nft::Config + pallet_timestamp::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The overarching dispatch call type.

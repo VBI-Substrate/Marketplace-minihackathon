@@ -17,16 +17,16 @@ pub mod pallet {
 	use frame_support::{
 		pallet_prelude::*,
 		sp_runtime::traits::{Scale},
-		traits::{tokens::ExistenceRequirement, Currency, Randomness, ReservableCurrency, Time},
-		transactional, require_transactional
+		traits::{tokens::ExistenceRequirement, Currency, Randomness, ReservableCurrency, Time, Len},
+		transactional, require_transactional,
+		sp_runtime::traits::Saturating
 	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::{TypeInfo, StaticTypeInfo};
 	use sp_io::hashing::blake2_128;
 	use sp_std::vec::Vec;
 	use crate::weights::WeightInfo;
-	use frame_support::sp_runtime::traits::Saturating;
-	use frame_support::traits::Len;
+	use sp_runtime::SaturatedConversion;
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
@@ -55,26 +55,29 @@ pub mod pallet {
 		pub installment_account: Option<Account>, // paying installment
 		pub royalty: Option<Vec<(Account, u8)>>,
 		pub collection_id: [u8; 16],
-		pub deposit: Balance
+		pub deposit: Balance,
+		pub price: Option<Balance>,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct PayInstallmentOrder<Account, Balance, Time> {
 		pub creator: Account,
-		pub pay_at: Time,
+		pub created_at: Time,
         pub periods_left: u8,
-		pub paid: Balance
+		pub paid: Balance,
+		pub nft_id: [u8; 16],
 	}
 
-	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
-	#[scale_info(skip_type_params(T))]
-	pub struct Sale<Account, Balance>{
-		pub owner: Option<Account>,
-		pub price: Option<Balance>,
-		pub in_installment: Option<bool>,
-		pub deposit: Option<Balance>
-	}
+	// #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	// #[scale_info(skip_type_params(T))]
+	// pub struct Sale<Account, Balance>{
+	// 	pub owner: Account,
+	// 	pub price: Balance,
+	// 	pub in_installment: bool,
+	// 	pub deposit: Balance
+	// }
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::without_storage_info]
@@ -103,7 +106,8 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ StaticTypeInfo
 			+ MaybeSerializeDeserialize
-			+ Send;
+			+ Send
+			+ Into<u64>;
 
 		type Timestamp: Time<Moment = Self::Moment>;
 	}
@@ -154,9 +158,9 @@ pub mod pallet {
 	#[pallet::getter(fn token_by_id)]
 	pub(super) type TokenById<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], NonFungibleToken<T::AccountId, BalanceOf<T>>>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn token_sale)]
-	pub(super) type TokenSale<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], Sale<T::AccountId, BalanceOf<T>>>;
+	// #[pallet::storage]
+	// #[pallet::getter(fn token_sale)]
+	// pub(super) type TokenSale<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], Sale<T::AccountId, BalanceOf<T>>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn order_by_id)]
@@ -196,7 +200,8 @@ pub mod pallet {
 				installment_account,
 				royalty,
 				collection_id,
-				deposit: data_deposit
+				deposit: data_deposit,
+				price: None,
 			};
 			
 			ensure!(!TokenById::<T>::contains_key(&nft_id), Error::<T>::DuplicateNFT);
@@ -376,21 +381,24 @@ pub mod pallet {
 			ensure!(periods > 0, Error::<T>::FromOneToSixMonths);
 			ensure!(periods < 7, Error::<T>::FromOneToSixMonths);
 
-			let nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NotSelling)?;
+			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT).unwrap();
+			ensure!(nft.price != None, Error::<T>::NotSelling);
+
+			let old_owner = nft.owner.clone();
 
 			let order = OrderByTokenId::<T>::get(&nft_id);
 			let periods_left = periods.clone() - 1;
 			let mut redundant:BalanceOf<T> = Self::u8_to_balance(0u8);
 			match order {
 				Some(mut order) => {
-					if periods_left == 0 && order.paid >= nft_on_sale.price.unwrap() {
-						redundant = order.paid.saturating_sub(nft_on_sale.price.unwrap());
+					if periods_left == 0 && order.paid >= nft.price.unwrap() {
+						redundant = order.paid.saturating_sub(nft.price.unwrap());
 						OrderByTokenId::<T>::remove(&nft_id);
 						// transfer
-						TokenSale::<T>::remove(&nft_id);
-						let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
+						nft.price = None;
 						nft.owner = sender.clone();
-						TokenById::<T>::insert(&nft_id, nft);
+						nft.installment_account = None;
+						TokenById::<T>::insert(&nft_id, nft.clone());
 					} else {
 						order.periods_left = periods_left;
 						order.paid = order.paid.saturating_add(paid);
@@ -400,15 +408,31 @@ pub mod pallet {
 				None => {
 					let order = PayInstallmentOrder::<T::AccountId, BalanceOf<T>, T::Moment> {
 						creator: sender.clone(),
-						pay_at: T::Timestamp::now(),
+						created_at: T::Timestamp::now(),
+						// created_at: Utc::now(),
 						paid,
-						periods_left
+						periods_left,
+						nft_id: nft_id.clone()
 					};
 					OrderByTokenId::<T>::insert(&nft_id, order);
+
+					nft.installment_account = Some(sender.clone());
+					TokenById::<T>::insert(&nft_id, nft.clone());
 				}
 			}
 
-			T::Currency::transfer(&sender, &nft_on_sale.owner.unwrap(), paid.saturating_sub(redundant), ExistenceRequirement::KeepAlive)?;
+			let royalty = nft.royalty.clone();
+			let mut total_perpetual:BalanceOf<T> = 0u32.into();
+			if royalty.len()>0 {
+				for (k, percent) in royalty.unwrap().iter() {
+					let percent_type_balance:BalanceOf<T> = Self::u8_to_balance(*percent);
+					let per_perpetual = percent_type_balance*nft.price.unwrap();
+					total_perpetual += per_perpetual;
+					T::Currency::transfer(&sender.clone(), &k, per_perpetual, ExistenceRequirement::KeepAlive)?;
+				}
+			}
+			// Transfer the amount from buyer to seller
+			T::Currency::transfer(&sender, &old_owner, paid.saturating_sub(redundant).saturating_sub(total_perpetual), ExistenceRequirement::KeepAlive)?;
 
 			Self::deposit_event(Event::Paid { nft_id, periods_left });
 
@@ -426,10 +450,7 @@ pub mod pallet {
 
 			let nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft.owner == sender.clone(), Error::<T>::NotOwner);
-
-			if let Some(nft_on_sale) = TokenSale::<T>::get(&nft_id) {
-				ensure!(nft_on_sale.in_installment == Some(false), Error::<T>::NFTInInstallment);
-			}
+			ensure!(nft.installment_account != None, Error::<T>::NFTInInstallment);
 
 			T::Currency::unreserve(&sender, nft.deposit);
 
@@ -449,32 +470,18 @@ pub mod pallet {
 			new_price: BalanceOf<T>,
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
-			let sender = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 
-			TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
-
-			let nft_on_sale = TokenSale::<T>::get(&nft_id);
-			match nft_on_sale {
-				Some(nft_on_sale) => {
-					Self::deposit_event(Event::NFTOnSale { nft: nft_id, price: nft_on_sale.price });
-				},
-				None => {
-					let data_compressed:u32 = 18;
-					let data_deposit = T::DataDepositPerByte::get().saturating_mul(data_compressed.into());
-					
-					T::Currency::reserve(&sender, data_deposit.clone())?;
-
-					let token_sale = Sale::<T::AccountId, BalanceOf<T>> {
-						owner: Some(sender),
-						price: Some(new_price.clone()),
-						in_installment: Some(false),
-						deposit: Some(data_deposit)
-					};
-					// Set the price in storage
-					TokenSale::<T>::insert(&nft_id, token_sale);
-					Self::deposit_event(Event::SetSaleNFT { nft: nft_id, price: Some(new_price) });
-				}
+			let mut nft_on_sale = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT).unwrap();
+			if nft_on_sale.price != None {
+				Self::deposit_event(Event::NFTOnSale { nft: nft_id, price: nft_on_sale.price });
+			} else {
+				nft_on_sale.price = Some(new_price).clone();
+				TokenById::<T>::insert(&nft_id.clone(), nft_on_sale);
+				// Set the price in storage
+				Self::deposit_event(Event::SetSaleNFT { nft: nft_id, price: Some(new_price) });
 			}
+
 			Ok(())
 		}
 
@@ -489,14 +496,13 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 
 			// Ensure the kitty exists and is called by the kitty owner
-			let nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
+			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft.owner == sender, Error::<T>::NotOwner);
+			ensure!(nft.price != None, Error::<T>::NotSelling);
+			ensure!(nft.installment_account != None, Error::<T>::NFTInInstallment);
 
-			let mut nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NotSelling)?;
-			ensure!(nft_on_sale.in_installment == Some(false), Error::<T>::NFTInInstallment);
-
-			nft_on_sale.price = Some(new_price.clone());
-			TokenSale::<T>::insert(&nft_id, nft_on_sale);
+			nft.price = Some(new_price).clone();
+			TokenById::<T>::insert(&nft_id, nft);
 
 			// Deposit a "PriceSet" event.
 			Self::deposit_event(Event::PriceSet { nft: nft_id, price: Some(new_price) });
@@ -535,8 +541,7 @@ pub mod pallet {
 			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			let from = nft.owner;
 
-			let mut nft_on_sale = TokenSale::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
-			ensure!(nft_on_sale.price != None, Error::<T>::NotSelling);
+			ensure!(nft.price != None, Error::<T>::NotSelling);
 			ensure!(from != to.clone(), Error::<T>::TransferToSelf);
 			
 			let old_owner = from;
@@ -546,16 +551,13 @@ pub mod pallet {
 			let mut total_perpetual:BalanceOf<T> = 0u32.into();
 			if royalty.len()>0 {
 				for (k, percent) in royalty.unwrap().iter() {
-					let key = k.clone();
-					if key != old_owner.clone() {
-						let percent_type_balance:BalanceOf<T> = Self::u8_to_balance(*percent);
-						let per_perpetual = percent_type_balance*nft_on_sale.price.unwrap();
-						total_perpetual += per_perpetual;
-						T::Currency::transfer(&new_owner, &key, per_perpetual, ExistenceRequirement::KeepAlive)?;
-					}
+					let percent_type_balance:BalanceOf<T> = Self::u8_to_balance(*percent);
+					let per_perpetual = percent_type_balance*nft.price.unwrap();
+					total_perpetual += per_perpetual;
+					T::Currency::transfer(&new_owner, &k, per_perpetual, ExistenceRequirement::KeepAlive)?;
 				}
 			}
-			let after_price = nft_on_sale.price.unwrap()-total_perpetual;
+			let after_price = nft.price.unwrap()-total_perpetual;
 			// Transfer the amount from buyer to seller
 			T::Currency::transfer(&new_owner, &old_owner, after_price, ExistenceRequirement::KeepAlive)?;
 			// Deposit sold event
@@ -569,15 +571,13 @@ pub mod pallet {
 			// Transfer succeeded, update the kitty owner and reset the price to `None`.
 			let default_price:BalanceOf<T> = 0u32.into();
 			nft.owner = new_owner.clone();
-			nft_on_sale.owner = Some(new_owner.clone());
-			nft_on_sale.price = Some(default_price.clone());
+			nft.price = Some(default_price).clone();
 			
-			T::Currency::unreserve(&old_owner, nft.deposit.saturating_add(nft_on_sale.deposit.unwrap()));
+			T::Currency::unreserve(&old_owner, nft.deposit.saturating_add(nft.deposit));
 			
 			nft.deposit = default_price.clone();
 			// Write updates to storage
 			TokenById::<T>::insert(&nft_id, nft);
-			TokenSale::<T>::remove(&nft_id);
 
 			Self::deposit_event(Event::Transferred { from: old_owner, to: new_owner.clone(), nft: nft_id });
 
@@ -616,7 +616,8 @@ pub mod pallet {
 				installment_account,
 				royalty,
 				collection_id,
-				deposit: default_deposit
+				deposit: default_deposit,
+				price: None
 			};
 			
 			ensure!(!TokenById::<T>::contains_key(&nft_id), Error::<T>::DuplicateNFT);
@@ -638,7 +639,7 @@ pub mod pallet {
 			let default_deposit = Self::u8_to_balance(0u8);
 
 			let collection = NFTCollection::<T::AccountId, BalanceOf<T>> { 
-				title: title,
+				title,
 				description,
 				creator: sender.clone(),
 				deposit: default_deposit
@@ -654,9 +655,34 @@ pub mod pallet {
 			Ok(())
 		}
 
+		pub fn get_installment_orders() -> Vec<PayInstallmentOrder<T::AccountId, BalanceOf<T>, T::Moment>> {
+			OrderByTokenId::<T>::iter_values().collect()
+		}
+
 		pub fn check_installment_orders() -> DispatchResult {
-			
-			
+			let now = T::Timestamp::now();
+			let orders = Self::get_installment_orders();
+
+			for order in orders.into_iter() {
+				let now_u64 = now.saturated_into::<u64>();
+				let order_time_u64 = order.created_at.saturated_into::<u64>();
+				let diff = now_u64.saturating_sub(order_time_u64);
+				// check if over 30 days ~ 2592000s
+				if diff > 2592000 {
+					Self::clean_up_failed_installment(order.nft_id)?;
+				}
+			}
+
+			Ok(())
+		}
+
+		pub fn clean_up_failed_installment(nft_id: [u8; 16]) -> DispatchResult {
+			OrderByTokenId::<T>::remove(nft_id.clone());
+
+			let mut nft = TokenById::<T>::get(nft_id.clone()).unwrap();
+			nft.installment_account = None;
+			TokenById::<T>::insert(nft_id.clone(), nft);
+
 			Ok(())
 		}
 	}
