@@ -49,6 +49,8 @@ pub use pallet_nft;
 
 pub use pallet_ocw;
 
+pub use pallet_market;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -257,6 +259,7 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
+
 parameter_types! {
 	pub const TransactionByteFee: Balance = 1;
 }
@@ -300,6 +303,16 @@ impl pallet_ocw::Config for Runtime {
 	type UnsignedInterval = UnsignedInterval;
 }
 
+impl pallet_market::Config for Runtime {
+	type Event = Event;
+
+	type NftId = u64;
+
+	type CollectionId = u64;
+
+	type SellId = u64;
+
+}
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
     Call: From<LocalCall>,
@@ -371,6 +384,7 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		PalletNFT: pallet_nft,
 		PalletOCW: pallet_ocw,
+		PalletMarket: pallet_market,
 	}
 );
 
