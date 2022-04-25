@@ -69,6 +69,14 @@ pub mod pallet {
 		pub nft_id: [u8; 16],
 	}
 
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Reward<Balance> {
+		pub title: Vec<u8>,
+		pub descripition: Option<Vec<u8>>,
+		pub point: Balance
+	}
+
 	// #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	// #[scale_info(skip_type_params(T))]
 	// pub struct Sale<Account, Balance>{
@@ -148,6 +156,7 @@ pub mod pallet {
 		Bought { seller: T::AccountId, buyer: T::AccountId, nft: [u8; 16], price: BalanceOf<T> },
 		Transferred { from: T::AccountId, to: T::AccountId, nft: [u8; 16] },
 		Paid { nft_id: [u8; 16], periods_left: u8 },
+		RewardSet { creator_id: [u8; 16] }
 	}
 
 	#[pallet::storage]
@@ -165,7 +174,23 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn order_by_id)]
 	pub(super) type OrderByTokenId<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], PayInstallmentOrder<T::AccountId, BalanceOf<T>, T::Moment>>;
-	
+
+	#[pallet::storage]
+	#[pallet::getter(fn operator_approvals)]
+	pub(super) type AccumulatePoint<T: Config> = StorageNMap<
+		_,
+		(
+			NMapKey<Blake2_128Concat, T::AccountId>, // creator
+			NMapKey<Blake2_128Concat, T::AccountId>, // fans/buyer
+		),
+		BalanceOf<T>,
+		ValueQuery,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn reward_by_creator_id)]
+	pub(super) type RewardByCreatorId<T: Config> = StorageMap<_, Twox64Concat, [u8; 16], Vec<Reward<BalanceOf<T>>>>;
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(<T as Config>::WeightInfo::mint_nft())]
@@ -248,7 +273,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::create_collection())]
+		#[pallet::weight(<T as Config>::WeightInfo::destroy_collection())]
 		#[transactional]
 		pub fn destroy_collection(
 			origin: OriginFor<T>,
@@ -300,6 +325,8 @@ pub mod pallet {
 			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft.owner == sender.clone(), Error::<T>::NotOwner);
 
+			T::Currency::unreserve(&sender, nft.deposit);
+
 			let data_compressed:u32 = u32::try_from(title.len()).unwrap().saturating_add(u32::try_from(description.len()).unwrap()).saturating_add(u32::try_from(media.len()).unwrap()).saturating_add(u32::try_from(media_hash.len()).unwrap()).saturating_add(u32::try_from(royalty.len()).unwrap().saturating_mul(16)).saturating_add(u32::try_from(collection_id.len()).unwrap()).saturating_add(32);
 			let data_deposit = T::DataDepositPerByte::get().saturating_mul(data_compressed.into());
 
@@ -327,7 +354,7 @@ pub mod pallet {
 		pub fn edit_collection(
 			origin: OriginFor<T>,
 			collection_id: [u8; 16],
-			title: Vec<u8>,
+			title: Option<Vec<u8>>,
 			description: Option<Vec<u8>>,
 		) -> DispatchResult {
 			// Make sure the caller is from a signed origin
@@ -336,12 +363,14 @@ pub mod pallet {
 			let mut collection = CollectionById::<T>::get(&collection_id).ok_or(Error::<T>::NoCollection)?;
 			ensure!(collection.creator == sender.clone(), Error::<T>::NotOwner);
 
+			T::Currency::unreserve(&sender, collection.deposit);
+
 			let data_compressed:u32 = u32::try_from(title.len()).unwrap().saturating_add(u32::try_from(description.len()).unwrap()).saturating_add(16);
 			let data_deposit = T::DataDepositPerByte::get().saturating_mul(data_compressed.into());
 
 			T::Currency::reserve(&sender, data_deposit.clone())?;
 			
-			collection.title = title;
+			collection.title = title.unwrap();
 			collection.description = description;
 			collection.deposit = data_deposit;
 			
@@ -367,7 +396,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::pay_installment())]
 		#[transactional]
 		pub fn pay_installment(
 			origin: OriginFor<T>,
@@ -495,7 +524,6 @@ pub mod pallet {
 			// Make sure the caller is from a signed origin
 			let sender = ensure_signed(origin)?;
 
-			// Ensure the kitty exists and is called by the kitty owner
 			let mut nft = TokenById::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 			ensure!(nft.owner == sender, Error::<T>::NotOwner);
 			ensure!(nft.price != None, Error::<T>::NotSelling);
@@ -509,10 +537,27 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::set_nft_price())]
+		#[transactional]
+		pub fn set_reward(
+			origin: OriginFor<T>,
+			rewards: Vec<Reward<BalanceOf<T>>>,
+		) -> DispatchResult {
+			// Make sure the caller is from a signed origin
+			let sender = ensure_signed(origin)?;
+
+			RewardByCreatorId::<T>::insert(&sender, rewards);
+
+			T::Currency::reserve(&sender, nft.deposit);
+
+			Self::deposit_event(Event::RewardSet { nft: nft_id });
+
+			Ok(())
+		}
 	}
 
 	//** Our helper functions.**//
-
 	impl<T: Config> Pallet<T> {
 		pub fn gen_id() -> [u8; 16] {
 			// Create randomness
@@ -585,6 +630,10 @@ pub mod pallet {
 		}
 
 		pub fn u8_to_balance(input: u8) -> BalanceOf<T> {
+			input.into()
+		}
+
+		pub fn u32_to_balance(input: u32) -> BalanceOf<T> {
 			input.into()
 		}
 

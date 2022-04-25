@@ -414,6 +414,7 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
 		[pallet_nft, PalletNFT]
+		[pallet_ocw, PalletOCW]
 	);
 }
 

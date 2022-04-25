@@ -1,45 +1,38 @@
-For idols/kol/content creator/sport star creator to create nft
+Hi everyone. We are Hermes and our project is ..., an NFT marketplace for KOLs and celebrities. We also have multiple features to support people who have a low budget to buy nfts.
 Slide 1
 1. Creator
-  a. Bring in another source of income with their own brains and reputations: Recently, when the world is suffered from Covid 19, main source of income of these people has been cut. Singer don't have any tour show, can't do MVs, Matches of sports teams cannot take place. But this bring us an oppotunity to give them another source of income, NFT. They can sell NFT to their fans as an picture or even videos, music, or who knows... . They can earn from selling NFT and royalty fee. But for now, with limited capabilities, we can only do NFT marketplace.
-  b. Make them even more famous: People talking, buy and sell their NFT can make them even more famous.
+  a. Bring in another source of income with their own talent and reputations: Recently, when the world suffered from Covid 19, the main source of income for these people has been cut. Singer doesn't have any touring show, can't do MVs, Matches of sports teams cannot take place. But this brings us an opportunity to give them another source of income, NFT. They can sell NFT to their fans as a picture or even videos, music, or who knows... . They can earn from selling NFT and royalty fee. But for now, with limited capabilities, we can only do NFT marketplace.
+  b. Make them even more famous: People can comment, express their emotes as a social network in our marketplace. So that the community is more active and make creator more famous.
 2. Fans
-  a. A way to contribute to their idols: As a fans, people really want to contribute to who they love, who they think deserve for the hardwork and creativity.
-  b. A way to invest, make collections: The idol famous, the creative and unique NFT will make their NFT's price go even higher
-  c.Give them oppotunities to interact with their idol: In our marketplace, every time you buy NFT from an idol, you will accumulate points. If the points reach a certain milestone that corresponds to a reward (talks, concert tickets, private shows,...) that the idols set, then the fans will get those privileges.
-  d. Provide another way to purchase NFT, pay installment: For those people who don't have much amount of token at a time, they can split payments with equal amount of tokens with no interest.
+  a. A way to contribute to their idols: As a fan, people really want to contribute to who they love, who they think deserves for the hard work and creativity.
+  b. A way to invest, make collections: The idol's famous, the creative, and unique NFT will make their NFT's price go even higher
+  c. Give them oppotunities to interact with their idol: In our marketplace, every time you buy NFT from an idol, you will accumulate points. If the points reach a certain milestone that corresponds to a reward (talks, concert tickets, private shows,...) that the idols set, then the fans will get those privileges.
+  d. Provide another way to purchase NFT, pay installment: Different from other nft marketplaces, we provide a new payment method, pay installment. For those people who don't have much amount of tokens at a time, they can split payments with an equal amount of tokens with no interest.
 
 Slide 2:
   1. Ensure the ownership of the NFT: Using blockchain, we can ensure the ownership of the NFT
   2. Exchange NFT eaily and transparently
-  3. Tokenomic?
-
-Slide 3: Tokenomic? (tham khao bepay)
-
-Slide 4: Type of Digital Assets (chac la bo di a)
+  3. Trust from Decentralise Tokenomic
+  4. Prevent fraud using DAO
 
 Slide 5: Features:
-  1. Creator (what about edit)
-    - Create collection
-    - Destroy collection
+  1. Creator
     - Mint NFT
-    - Burn NFT
-    - Set rewards
+    - Set rewards: The reward corresponds to the amount of coin the user buys the creator's nft. Users can exchange these points with the corresponding reward like talks, concert tickets, private shows,..
   2. NFT Owner
     - Sale NFT
     - Edit price
   3. NFT Buyer
     - Buy NFT
-    - Pay installment NFT
+    - Pay installment NFT: This feature allows people with a low budget can own an NFT. They have to pay an amount of token each month for no more than 6 months. If after a month, the person doesn't pay, we'll cancel his order and this person will lose the coins as a penalty.
 
 Slide 6: More features
-  1. (e k hieu lam)
-  2. ...
-  3. ...
-  4. (mua thoi, thue lam gi a? chac la bo di thoi)
-  5. (e k hieu lam)
-  6. Multi Owner NFT feature
-  7. Cross-chain bridge
-  8. DAO
-  9. Social network: Creators can make their community more active, more famous, earn more money
-  10. Digital Identity
+  1. Multi token: This feature allows users have more opportunity to own an NFT. A creator can decide the rarity of their NFTs.
+  2. Auction feature: When there is an NFT that is rare and really valuable, this feature allows users to pay the highest price to own the NFT.
+  3. Lazy Minting feature: Cuz minting require a user to reserve coins. This feature allows the creator to mint nft by order.  
+  4. Lending: 
+  5. Staking:
+  6. Purchase Request (Make Offer) feature: When people want to buy your NFT but your NFT is not selling, this feature will help these people to notify NFT's owner that they want to buy with a price.  
+  7. Cross-chain bridge: we'll expand our market by building crosschain bridge. This feature allows people from other blockchains can exchange nfts in our marketplace.
+  8. DAO: When our user is large enough, we'll implement DAO to prevent from reminting existed nfts. Users have to stake a specific amount of their native coin to be a voter. When these people see violated nft, they will vote the nft. If the number of votes is over 2/3 of voters, the nft will be disabled. 
+  9. Social network: This is a place where people can share their nft with other people. And Creators can make their community more active, more famous, earn more money

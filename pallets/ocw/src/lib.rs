@@ -2,6 +2,9 @@
 
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+
 #[frame_support::pallet]
 pub mod pallet {
 	//! A demonstration of an offchain worker that sends onchain callbacks
@@ -22,11 +25,6 @@ pub mod pallet {
 		},
 	};
 	use sp_std::str;
-	use frame_support::{
-		traits::Time,
-		sp_runtime::traits::Saturating
-	};
-	use sp_runtime::SaturatedConversion;
 
 	/// Defines application identifier for crypto keys of this module.
 	///
@@ -72,7 +70,7 @@ pub mod pallet {
 	}
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + CreateSignedTransaction<Call<Self>> + pallet_nft::Config + pallet_timestamp::Config {
+	pub trait Config: frame_system::Config + CreateSignedTransaction<Call<Self>> + pallet_nft::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// The overarching dispatch call type.
