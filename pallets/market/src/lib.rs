@@ -204,9 +204,9 @@ pub mod pallet {
 		pub fn create_collection(origin: OriginFor<T>, name: Vec<u8>, symbol: Vec<u8>, total_supply: u64) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			let collection_info = CollectionInfo {
-				name: name,
-				symbol: symbol,
-				total_supply: total_supply,
+				name,
+				symbol,
+				total_supply,
 				issuer: caller,
 			};
 			// Collections::<T>::insert()
@@ -228,11 +228,11 @@ pub mod pallet {
 			})?;
 
 			let nft_info = NftInfo {
-				collection_id: collection_id,
-				nft_id: nft_id,
-				title: title,
-				description: description,
-				metadata: metadata,
+				collection_id,
+				nft_id,
+				title,
+				description,
+				metadata,
 				issuer: caller.clone(),
 				owner: caller.clone(),
 				nft_status: NftStatus::Normal,
@@ -295,8 +295,8 @@ pub mod pallet {
 
 			let nft_sell_order = NftSellOrder {
 				nft_id: nft_id.clone(),
-				price: price,
-				expired: expired,
+				price,
+				expired,
 				sell_type: nft_status,
 				creator: caller.clone(),
 				instalment_account: None,
