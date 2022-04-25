@@ -95,7 +95,7 @@ pub mod pallet {
 
 		type CollectionId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
 
-		type SellerId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
+		// type SellerId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
 
 	}
 
