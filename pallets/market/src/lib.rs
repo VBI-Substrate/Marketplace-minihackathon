@@ -95,7 +95,7 @@ pub mod pallet {
 
 		type CollectionId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
 
-		// type SellerId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
+		type SellerId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
 
 	}
 
@@ -337,10 +337,10 @@ pub mod pallet {
 			ensure!(Nfts::<T>::get(&nft_id).unwrap().nft_status == NftStatus::Selling, "NFT is not Sell");
 			let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
 
-			let seller = nft_info.owner;
+			let seller = nft_info.owner.clone();
 			ensure!(buyer != seller, "can not buy nft of your self");
 
-			Self::deposit_event(Event::BuyNft(buyer, nft_id));
+			Self::deposit_event(Event::BuyNft(buyer.clone(), nft_id));
 
 			// let sell_id = SellOfNft::<T>::get(&nft_id).unwrap();
 			let sell_info = SellingInfo::<T>::get(&nft_id).unwrap();
@@ -356,7 +356,7 @@ pub mod pallet {
 
 			// transfer NFT finish - NFT status back to "Normal"
 			nft_info.nft_status = NftStatus::Normal;
-			Nfts::<T>::insert(&nft_id, nft_info.clone());
+			Nfts::<T>::insert(&nft_id, nft_info);
 
 			Self::deposit_event(Event::BuyNft(buyer, nft_id));
 
@@ -372,8 +372,8 @@ pub mod pallet {
 			ensure!(Nfts::<T>::get(&nft_id).unwrap().nft_status == NftStatus::PayingInstalment, "NFT is not enable for instalment");
 			/* TODO: need to check deposit > min_amount */
 
-			let nft_info = Nfts::<T>::get(&nft_id).unwrap();
-			let seller = nft_info.owner;
+			let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
+			let seller = nft_info.owner.clone();
 
 			
 			//let sell_id = SellOfNft::<T>::get(&nft_id).unwrap();
@@ -397,7 +397,7 @@ pub mod pallet {
 	
 				// transfer NFT finish - NFT status back to "Normal"
 				nft_info.nft_status = NftStatus::Normal;
-				Nfts::<T>::insert(&nft_id, nft_info.clone());
+				Nfts::<T>::insert(&nft_id, nft_info);
 
 				Self::deposit_event(Event::BuyNft(buyer, nft_id));
 			}
