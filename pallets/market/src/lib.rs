@@ -421,7 +421,7 @@ pub mod pallet {
 				sell_info.next_pay_amount = remain_instalment;
 				sell_info.paid = paid;
 				
-				sell_info.instalment_account = buyer.clone();
+				//sell_info.instalment_account = buyer.clone();
 
 				SellingInfo::<T>::insert(&nft_id, &sell_info);
 			}
