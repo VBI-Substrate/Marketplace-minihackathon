@@ -403,9 +403,9 @@ pub mod pallet {
 			}
 			else if sell_info.paid == 0 // first pay deposit
 			{
-				let mut buyings_of_caller = BuyingByBuyer::<T>::get(caller.clone()).unwrap_or_default();
+				let mut buyings_of_caller = BuyingByBuyer::<T>::get(&buyer).unwrap_or_default();
 				let _ = buyings_of_caller.push(nft_id.clone());
-				BuyingByBuyer::<T>::insert(&caller, buyings_of_caller);
+				BuyingByBuyer::<T>::insert(&buyer, buyings_of_caller);
 
 				nft_info.nft_status = NftStatus::PayingInstalment;
 				Nfts::<T>::insert(&nft_id, nft_info.clone());
