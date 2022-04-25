@@ -283,7 +283,7 @@ pub mod pallet {
 				}
 			};
 			nft_info.price = price;
-			nft_info.id = nft_id;
+			nft_info.nft_id = nft_id;
 			Nfts::<T>::insert(&nft_id, nft_info.clone());
 
 			/* let instalment_account = match &nft_info.nft_status {
