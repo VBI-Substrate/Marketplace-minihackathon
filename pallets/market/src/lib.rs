@@ -57,7 +57,7 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, TypeInfo)]
-	pub struct NftInfo <AccountId, CollectionId> {
+	pub struct NftInfo <AccountId, CollectionId, NftId> {
 		collection_id: CollectionId,
 		nft_id: NftId,
 		title: Vec<u8>,
@@ -324,7 +324,7 @@ pub mod pallet {
 
 			// SellOfNft::<T>::insert(nft_id.clone(), selling_id.clone());
 
-			Self::deposit_event(Event::CreateSale(caller, selling_id));
+			Self::deposit_event(Event::CreateSale(caller, nft_id));
 			
 			Ok(())
 		}
