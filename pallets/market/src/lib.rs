@@ -164,7 +164,7 @@ pub mod pallet {
 	pub type SellingByOwner<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::SellId>>;
 
 	#[pallet::storage]
-	#[pallet::getter( fn selling_by_owner)]
+	#[pallet::getter( fn buying_by_buyer)]
 	pub type BuyingByBuyer<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::SellId>>;
 
 
@@ -403,7 +403,7 @@ pub mod pallet {
 			{
 				let mut buyings_of_caller = BuyingByBuyer::<T>::get(caller.clone()).unwrap_or_default();
 				let _ = buyings_of_caller.push(nft_id.clone());
-				BuyingByBuyer::<T>::insert(&caller, buying_of_caller);
+				BuyingByBuyer::<T>::insert(&caller, buyings_of_caller);
 
 				nft_info.nft_status = NftStatus::PayingInstalment;
 				Nfts::<T>::insert(&nft_id, nft_info.clone());
