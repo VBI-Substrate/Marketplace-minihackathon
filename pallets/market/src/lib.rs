@@ -282,6 +282,8 @@ pub mod pallet {
 					SellType::InstalmentSell
 				}
 			};
+			nft_info.price = price;
+			nft_info.id = nft_id;
 			Nfts::<T>::insert(&nft_id, nft_info.clone());
 
 			/* let instalment_account = match &nft_info.nft_status {
@@ -332,11 +334,11 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn buyer_buy_nft(origin: OriginFor<T>, nft_id: T::NftId, pay: u128) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
-			
-			ensure!(Nfts::<T>::contains_key(&nft_id), "NFT is not exist");
-			ensure!(Nfts::<T>::get(&nft_id).unwrap().nft_status == NftStatus::Selling, "NFT is not Sell");
 			let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
 
+			ensure!(Nfts::<T>::contains_key(&nft_id), "NFT is not exist");
+			ensure!(nft_info.nft_status == NftStatus::Selling || nft_info.nft_status == NftStatus::SellingInstalment, "NFT is not Sell");
+			
 			let seller = nft_info.owner.clone();
 			ensure!(buyer != seller, "can not buy nft of your self");
 
@@ -366,13 +368,13 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn buyer_deposit_instalment(origin: OriginFor<T>, nft_id: T::NftId, deposit: u128) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
-
+			let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
+			
 			
 			ensure!(Nfts::<T>::contains_key(&nft_id), "NFT is not exist");
-			ensure!(Nfts::<T>::get(&nft_id).unwrap().nft_status == NftStatus::PayingInstalment, "NFT is not enable for instalment");
-			/* TODO: need to check deposit > min_amount */
+			ensure!(nft_info.nft_status == NftStatus::SellingInstalment || nft_info.nft_status == NftStatus::PayingInstalment, "NFT is not enable for instalment");
+			/* TODO: need to check deposit > const min_amount */
 
-			let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
 			let seller = nft_info.owner.clone();
 
 			
@@ -444,8 +446,6 @@ pub mod pallet {
 			}
 			Ok(())
 		}
-
-
 	}
 }
 
