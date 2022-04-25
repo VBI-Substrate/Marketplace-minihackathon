@@ -95,7 +95,7 @@ pub mod pallet {
 
 		type CollectionId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
 
-		type SellId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
+		// type SellerId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy  + MaxEncodedLen;
 
 	}
 
@@ -143,7 +143,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter( fn sell_of_nft)]
-	pub type SellOfNft<T: Config> = StorageMap<_, Twox64Concat, T::NftId, T::SellId>;
+	pub type SellOfNft<T: Config> = StorageMap<_, Twox64Concat, T::NftId, T::NftId>;
 
 	/*
 		NFT sell & buy storage
@@ -153,19 +153,19 @@ pub mod pallet {
 	pub type SellingInfoOf<T> = NftSellOrder< <T as frame_system::Config>::AccountId, <T as Config>::NftId, <T as frame_system::Config>::BlockNumber > ;
 	#[pallet::storage]
 	#[pallet::getter( fn selling_info_of)]
-	pub type SellingInfo<T: Config> = StorageMap<_, Twox64Concat, T::SellId, SellingInfoOf<T>>;
+	pub type SellingInfo<T: Config> = StorageMap<_, Twox64Concat, T::NftId, SellingInfoOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter( fn selling_count)]
-	pub type SellingCount<T: Config> = StorageValue<_, T::SellId, ValueQuery>;
+	pub type SellingCount<T: Config> = StorageValue<_, T::NftId, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter( fn selling_by_owner)]
-	pub type SellingByOwner<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::SellId>>;
+	pub type SellingByOwner<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::NftId>>;
 
 	#[pallet::storage]
 	#[pallet::getter( fn buying_by_buyer)]
-	pub type BuyingByBuyer<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::SellId>>;
+	pub type BuyingByBuyer<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::NftId>>;
 
 
 
@@ -177,7 +177,7 @@ pub mod pallet {
 		/// parameters. [something, who]
 		SomethingStored(u32, T::AccountId),
 		MintNft(T::AccountId, T::NftId),
-		CreateSale(T::AccountId, T::SellId),
+		CreateSale(T::AccountId, T::NftId),
 		TransferFrom(T::AccountId, T::AccountId, T::NftId),
 		BuyNft(T::AccountId, T::NftId),
 	}
@@ -307,7 +307,7 @@ pub mod pallet {
 			};
 			
 			/*
-			let selling_id = SellingCount::<T>::try_mutate(| id | -> Result<T::SellId, DispatchError> {
+			let selling_id = SellingCount::<T>::try_mutate(| id | -> Result<T::NftId, DispatchError> {
 				let current_id = *id;
 				*id = id.checked_add(&One::one()).ok_or(Error::<T>::StorageOverflow)?;
 				Ok(current_id)
