@@ -123,7 +123,7 @@ pub mod pallet {
 	*/
 	#[pallet::storage]
 	#[pallet::getter(fn nft_info_of)]
-	pub type Nfts<T: Config> = StorageMap <_, Twox64Concat, T::NftId, NftInfo<T::AccountId, T::CollectionId>>;
+	pub type Nfts<T: Config> = StorageMap <_, Twox64Concat, T::NftId, NftInfo<T::AccountId, T::CollectionId, T::NftId>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn nfts_count)]
