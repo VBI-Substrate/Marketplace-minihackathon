@@ -229,12 +229,14 @@ pub mod pallet {
 
 			let nft_info = NftInfo {
 				collection_id: collection_id,
+				nft_id: nft_id,
 				title: title,
 				description: description,
 				metadata: metadata,
 				issuer: caller.clone(),
 				owner: caller.clone(),
 				nft_status: NftStatus::Normal,
+				price: 0,
 				is_locked: false,
 				is_hidden: false,
 			};
