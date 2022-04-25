@@ -28,6 +28,8 @@ pub mod pallet {
 	pub enum NftStatus {
 		Normal,
 		Selling,
+		SellingAuction,
+		SellingInstalment,
 		PayingInstalment,
 	}
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -57,12 +59,14 @@ pub mod pallet {
 	#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, TypeInfo)]
 	pub struct NftInfo <AccountId, CollectionId> {
 		collection_id: CollectionId,
+		nft_id: NftId,
 		title: Vec<u8>,
 		description: Vec<u8>,
 		metadata: Vec<u8>,
 		issuer: AccountId,
 		pub owner: AccountId,
 		pub nft_status: NftStatus,
+		price: u128,
 		is_locked: bool,
 		is_hidden: bool,
 	}
@@ -143,6 +147,7 @@ pub mod pallet {
 
 	/*
 		NFT sell & buy storage
+		For SellingInstalment
 	*/
 
 	pub type SellingInfoOf<T> = NftSellOrder< <T as frame_system::Config>::AccountId, <T as Config>::NftId, <T as frame_system::Config>::BlockNumber > ;
@@ -157,6 +162,10 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter( fn selling_by_owner)]
 	pub type SellingByOwner<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::SellId>>;
+
+	#[pallet::storage]
+	#[pallet::getter( fn selling_by_owner)]
+	pub type BuyingByBuyer<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Vec<T::SellId>>;
 
 
 
@@ -267,15 +276,16 @@ pub mod pallet {
 					SellType::Auction
 				},
 				_ => {
-					nft_info.nft_status = NftStatus::PayingInstalment;
+					nft_info.nft_status = NftStatus::SellingInstalment;
 					SellType::InstalmentSell
 				}
 			};
 			Nfts::<T>::insert(&nft_id, nft_info.clone());
-			let instalment_account = match &nft_info.nft_status {
+
+			/* let instalment_account = match &nft_info.nft_status {
 				NftStatus::PayingInstalment => Some(caller.clone()),
 				_ => None
-			};
+			};*/
 
 			let now = <frame_system::Pallet<T>>::block_number();
 
@@ -287,7 +297,7 @@ pub mod pallet {
 				expired: expired,
 				sell_type: nft_status,
 				creator: caller.clone(),
-				instalment_account: instalment_account,
+				instalment_account: None,
 				instalment_period: Some(instalment_period),
 				instalment_interest_rate_per_day: None,
 				start_date: now,
@@ -296,23 +306,27 @@ pub mod pallet {
 				next_pay_amount: 0,
 			};
 			
+			/*
 			let selling_id = SellingCount::<T>::try_mutate(| id | -> Result<T::SellId, DispatchError> {
 				let current_id = *id;
 				*id = id.checked_add(&One::one()).ok_or(Error::<T>::StorageOverflow)?;
 				Ok(current_id)
 			})?;
 			SellingInfo::<T>::insert(selling_id.clone(), nft_sell_order);
+			*/
+			SellingInfo::<T>::insert(nft_id.clone(), nft_sell_order);
 
 			let mut selling_of_caller = SellingByOwner::<T>::get(caller.clone()).unwrap_or_default();
-			let _ = selling_of_caller.push(selling_id.clone());
+			let _ = selling_of_caller.push(nft_id.clone());
 			SellingByOwner::<T>::insert(&caller, selling_of_caller);
 
-			SellOfNft::<T>::insert(nft_id.clone(), selling_id.clone());
+			// SellOfNft::<T>::insert(nft_id.clone(), selling_id.clone());
 
 			Self::deposit_event(Event::CreateSale(caller, selling_id));
 			
 			Ok(())
 		}
+
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn buyer_buy_nft(origin: OriginFor<T>, nft_id: T::NftId, pay: u128) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
@@ -323,22 +337,30 @@ pub mod pallet {
 
 			let seller = nft_info.owner;
 			ensure!(buyer != seller, "can not buy nft of your self");
-			nft_info.nft_status = NftStatus::Normal;
-			let sell_id = SellOfNft::<T>::get(&nft_id).unwrap();
-			let sell_info = SellingInfo::<T>::get(&sell_id).unwrap();
+
+			Self::deposit_event(Event::BuyNft(buyer, nft_id));
+
+			// let sell_id = SellOfNft::<T>::get(&nft_id).unwrap();
+			let sell_info = SellingInfo::<T>::get(&nft_id).unwrap();
+
 			ensure!(pay >= sell_info.price, "Not enough balance");
 			let _ = Self::do_transfer(&seller, &buyer, &nft_id);
 
 			// update selling by owner 
 			let mut selling_by_owner = SellingByOwner::<T>::get(&seller).unwrap_or_default();
-			let index = selling_by_owner.iter().position(| x | *x == sell_id.clone()).unwrap();
+			let index = selling_by_owner.iter().position(| x | *x == nft_id.clone()).unwrap();
 			selling_by_owner.remove(index);
 			SellingByOwner::<T>::insert(&seller, selling_by_owner);
+
+			// transfer NFT finish - NFT status back to "Normal"
+			nft_info.nft_status = NftStatus::Normal;
+			Nfts::<T>::insert(&nft_id, nft_info.clone());
 
 			Self::deposit_event(Event::BuyNft(buyer, nft_id));
 
 			Ok(())
 		}
+
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn buyer_deposit_instalment(origin: OriginFor<T>, nft_id: T::NftId, deposit: u128) -> DispatchResult {
 			let buyer = ensure_signed(origin)?;
@@ -346,33 +368,77 @@ pub mod pallet {
 			
 			ensure!(Nfts::<T>::contains_key(&nft_id), "NFT is not exist");
 			ensure!(Nfts::<T>::get(&nft_id).unwrap().nft_status == NftStatus::PayingInstalment, "NFT is not enable for instalment");
+			/* TODO: need to check deposit > min_amount */
 
 			let nft_info = Nfts::<T>::get(&nft_id).unwrap();
 			let seller = nft_info.owner;
 
 			
-			let sell_id = SellOfNft::<T>::get(&nft_id).unwrap();
-			let mut sell_info = SellingInfo::<T>::get(&sell_id).unwrap();
+			//let sell_id = SellOfNft::<T>::get(&nft_id).unwrap();
+
+			let mut sell_info = SellingInfo::<T>::get(&nft_id).unwrap();
 			let price = sell_info.price;
-			if sell_info.paid + deposit >= price 
+
+			if sell_info.paid + deposit >= price // finish instalment
 			{
 				let _ = Self::do_transfer(&seller, &buyer, &nft_id);
 				// update selling by owner 
 				let mut selling_by_owner = SellingByOwner::<T>::get(&seller).unwrap_or_default();
-				let index = selling_by_owner.iter().position(| x | *x == sell_id.clone()).unwrap();
+				let index = selling_by_owner.iter().position(| x | *x == nft_id.clone()).unwrap();
 				selling_by_owner.remove(index);
 				SellingByOwner::<T>::insert(&seller, selling_by_owner);
+
+				let mut buying_by_owner = BuyingByBuyer::<T>::get(&buyer).unwrap_or_default();
+				let index = buying_by_owner.iter().position(| x | *x == nft_id.clone()).unwrap();
+				buying_by_owner.remove(index);
+				SellingByOwner::<T>::insert(&buyer, buying_by_owner);
 	
+				// transfer NFT finish - NFT status back to "Normal"
+				nft_info.nft_status = NftStatus::Normal;
+				Nfts::<T>::insert(&nft_id, nft_info.clone());
+
 				Self::deposit_event(Event::BuyNft(buyer, nft_id));
 			}
-			else
+			else if sell_info.paid == 0 // first pay deposit
 			{
-				ensure!(sell_info.next_pay_amount <= deposit, "insufficient depoist");
+				let mut buyings_of_caller = BuyingByBuyer::<T>::get(caller.clone()).unwrap_or_default();
+				let _ = buyings_of_caller.push(nft_id.clone());
+				BuyingByBuyer::<T>::insert(&caller, buying_of_caller);
+
+				nft_info.nft_status = NftStatus::PayingInstalment;
+				Nfts::<T>::insert(&nft_id, nft_info.clone());
+
+				/* TODO: create a instalment calc properly */
+				//sell_info.next_pay_amount = Self::calc_next_pay_amount(&remain_instalment, &sell_info.instalment_period.unwrap(), &sell_info.start_date);
+				
 				sell_info.last_paid_date = Some(<frame_system::Pallet<T>>::block_number());
+
 				let paid = sell_info.paid + deposit;
 				let remain_instalment = price - paid;
-				sell_info.next_pay_amount = Self::calc_next_pay_amount(&remain_instalment, &sell_info.instalment_period.unwrap(), &sell_info.start_date);
-				SellingInfo::<T>::insert(&sell_id, &sell_info);
+				
+				sell_info.next_pay_amount = remain_instalment;
+				sell_info.paid = paid;
+				
+				sell_info.instalment_account = buyer.clone();
+
+				SellingInfo::<T>::insert(&nft_id, &sell_info);
+			}
+			else 
+			{
+				// ensure!(sell_info.next_pay_amount <= deposit, "insufficient depoist");
+
+				/* TODO: create a instalment calc properly */
+				//sell_info.next_pay_amount = Self::calc_next_pay_amount(&remain_instalment, &sell_info.instalment_period.unwrap(), &sell_info.start_date);
+				
+				sell_info.last_paid_date = Some(<frame_system::Pallet<T>>::block_number());
+
+				let paid = sell_info.paid + deposit;
+				let remain_instalment = price - paid;
+				
+				sell_info.next_pay_amount = remain_instalment;
+				sell_info.paid = paid;
+
+				SellingInfo::<T>::insert(&nft_id, &sell_info);
 			}
 			Ok(())
 		}
@@ -394,14 +460,21 @@ impl<T: Config> Pallet<T> {
 		if !Nfts::<T>::contains_key(&nft_id) {
 			return Err(Error::<T>::NftIsNotExist)?;
 		}
+		// update ownership inside Nfts storage entry
 		let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
 		nft_info.owner = to.clone();
+		Nfts::<T>::insert(&nft_id, nft_info.clone());
+
+		// update Ownership
 		OwnerOf::<T>::insert(&nft_id, &to);
+		
+		// Remove NFT for "from" Account
 		let mut nft_by_from = NftsByOwner::<T>::get(&from).unwrap_or_default();
 		let index = nft_by_from.iter().position(| x | *x == nft_id.clone()).unwrap();
 		nft_by_from.remove(index);
 		NftsByOwner::<T>::insert(&from, nft_by_from);
 
+		// Add NFT for "to" Account
 		let mut nft_by_to  = NftsByOwner::<T>::get(to.clone()).unwrap_or_default();
 		nft_by_to.push(nft_id.clone());
 		NftsByOwner::<T>::insert(&to, nft_by_to);
