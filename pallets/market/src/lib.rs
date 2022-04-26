@@ -376,7 +376,7 @@ pub mod pallet {
 			/* TODO: need to check deposit > const min_amount */
 
 			let seller = nft_info.owner.clone();
-
+			ensure!(buyer != seller, "can not buy nft of your self");
 			
 			//let sell_id = SellOfNft::<T>::get(&nft_id).unwrap();
 
@@ -465,7 +465,9 @@ impl<T: Config> Pallet<T> {
 		// update ownership inside Nfts storage entry
 		let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
 		nft_info.owner = to.clone();
-		Nfts::<T>::insert(&nft_id, nft_info);
+		log::info!("---nft_info.owner--------------: {:?}", nft_info.owner);
+			
+		Nfts::<T>::insert(&nft_id, nft_info.clone());
 
 		// update Ownership
 		OwnerOf::<T>::insert(&nft_id, &to);
