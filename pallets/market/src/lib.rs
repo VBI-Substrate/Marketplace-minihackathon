@@ -395,7 +395,7 @@ pub mod pallet {
 				let mut buying_by_owner = BuyingByBuyer::<T>::get(&buyer).unwrap_or_default();
 				let index = buying_by_owner.iter().position(| x | *x == nft_id.clone()).unwrap();
 				buying_by_owner.remove(index);
-				SellingByOwner::<T>::insert(&buyer, buying_by_owner);
+				BuyingByBuyer::<T>::insert(&buyer, buying_by_owner);
 	
 				// transfer NFT finish - NFT status back to "Normal"
 				nft_info.nft_status = NftStatus::Normal;
@@ -465,7 +465,7 @@ impl<T: Config> Pallet<T> {
 		// update ownership inside Nfts storage entry
 		let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
 		nft_info.owner = to.clone();
-		Nfts::<T>::insert(&nft_id, nft_info.clone());
+		Nfts::<T>::insert(&nft_id, nft_info);
 
 		// update Ownership
 		OwnerOf::<T>::insert(&nft_id, &to);
@@ -480,6 +480,7 @@ impl<T: Config> Pallet<T> {
 		let mut nft_by_to  = NftsByOwner::<T>::get(to.clone()).unwrap_or_default();
 		nft_by_to.push(nft_id.clone());
 		NftsByOwner::<T>::insert(&to, nft_by_to);
+
 		Self::deposit_event(Event::TransferFrom(from.clone(), to.clone(), nft_id.clone()));
 
 		Ok(())
