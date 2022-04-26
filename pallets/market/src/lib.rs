@@ -393,11 +393,12 @@ pub mod pallet {
 				SellingByOwner::<T>::insert(&seller, selling_by_owner);
 
 				let mut buying_by_owner = BuyingByBuyer::<T>::get(&buyer).unwrap_or_default();
-				let index = buying_by_owner.iter().position(| x | *x == nft_id.clone()).unwrap();
+				let index = buying_by_owner.iter().position(| x | *x == nft_id.clone()).unwrap_or_default();
 				buying_by_owner.remove(index);
 				BuyingByBuyer::<T>::insert(&buyer, buying_by_owner);
 	
 				// transfer NFT finish - NFT status back to "Normal"
+				let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
 				nft_info.nft_status = NftStatus::Normal;
 				Nfts::<T>::insert(&nft_id, nft_info);
 
@@ -466,7 +467,6 @@ impl<T: Config> Pallet<T> {
 		let mut nft_info = Nfts::<T>::get(&nft_id).unwrap();
 		nft_info.owner = to.clone();
 		log::info!("---nft_info.owner--------------: {:?}", nft_info.owner);
-			
 		Nfts::<T>::insert(&nft_id, nft_info.clone());
 
 		// update Ownership
