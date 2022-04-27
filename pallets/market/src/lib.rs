@@ -70,7 +70,7 @@ pub mod pallet {
 	pub struct NftSellOrder<AccountId, NftId, Time> {
 		nft_id: NftId,
 		price: u128,
-		expired: Time,
+		pub expired: Time,
 		sell_type: SellType,
 		creator: AccountId,
 		instalment_account: Option<AccountId>,
@@ -182,6 +182,31 @@ pub mod pallet {
 		StorageOverflow,
 		CollectionNotExist,
 		NftIsNotExist,
+		UnknownOffchainMux,
+	}
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		/// Offchain Worker entry point.
+		///
+		/// By implementing `fn offchain_worker` you declare a new offchain worker.
+		/// This function will be called when the node is fully synced and a new best block is
+		/// succesfuly imported.
+		/// Note that it's not guaranteed for offchain workers to run on EVERY block, there might
+		/// be cases where some blocks are skipped, or for some the worker runs twice (re-orgs),
+		/// so the code should be able to handle that.
+		/// You can use `Local Storage` API to coordinate runs of the worker.
+		fn offchain_worker(block_number: T::BlockNumber) {
+
+			log::info!("Hello from pallet-ocw.");
+
+			// worker will be called after a day
+			const TX_TYPES: u32 = 144000;
+			let modu = block_number.try_into().map_or(TX_TYPES, |bn: usize| (bn as u32) % TX_TYPES);
+			let result = match modu {
+				0 => Self::remove_outdate_sales(block_number),
+				_ => (),
+			};
+		}
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -384,6 +409,26 @@ pub mod pallet {
 	//** Our helper functions.**//
 
 impl<T: Config> Pallet<T> {
+	// nft_id: NftId,
+	// price: u128,
+	// expired: Time,
+	// sell_type: SellType,
+	// creator: AccountId,
+	// instalment_account: Option<AccountId>,
+	// instalment_period: Option<Time>,
+	// instalment_interest_rate_per_day: Option<InstalmentInterestRatePerDay>,
+	// start_date: Time,
+	// last_paid_date: Option<Time>,
+	// paid: u128,
+	// next_pay_amount: u128,
+	pub fn remove_outdate_sales(block_number: T::BlockNumber) {
+		for (sell_id, sell_info) in SellingInfo::<T>::iter() {
+			if(sell_info.expired < block_number){
+				SellingInfo::<T>::remove(sell_id);
+			}
+		}
+	}
+
 	pub fn calc_next_pay_amount(remain_instalment: &u128, instalment_period: &T::BlockNumber, start_date: &T::BlockNumber) -> u128 {
 		1
 	}

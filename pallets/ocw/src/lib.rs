@@ -138,7 +138,7 @@ pub mod pallet {
 		/// You can use `Local Storage` API to coordinate runs of the worker.
 		fn offchain_worker(block_number: T::BlockNumber) {
 
-			log::info!("Hello from pallet-ocw.");
+			// log::info!("Hello from pallet-ocw.");
 
 			// worker will be called after a day
 			const TX_TYPES: u32 = 144000;
