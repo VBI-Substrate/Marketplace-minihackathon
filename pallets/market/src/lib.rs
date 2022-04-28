@@ -441,7 +441,9 @@ pub mod pallet {
 				/* TODO: create a instalment calc properly */
 				//sell_info.next_pay_amount = Self::calc_next_pay_amount(&remain_instalment, &sell_info.instalment_period.unwrap(), &sell_info.start_date);
 				
-				sell_info.last_paid_date = Some(<frame_system::Pallet<T>>::block_number());
+				let now = <frame_system::Pallet<T>>::block_number();
+
+				sell_info.last_paid_date = sell_info.instalment_period + now;
 
 				let paid = sell_info.paid + deposit;
 				let remain_instalment = price - paid;
@@ -494,6 +496,7 @@ impl<T: Config> Pallet<T> {
 		for (sell_id, sell_info) in SellingInfo::<T>::iter() {
 			if(sell_info.expired < block_number){
 				SellingInfo::<T>::remove(sell_id);
+
 			}
 		}
 	}
