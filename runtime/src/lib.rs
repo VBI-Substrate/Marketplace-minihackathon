@@ -310,7 +310,7 @@ impl pallet_market::Config for Runtime {
 
 	type CollectionId = u64;
 
-	type SellId = u64;
+	// type SellerId = u64;
 
 }
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
