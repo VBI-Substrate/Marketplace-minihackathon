@@ -36,3 +36,7 @@ Slide 6: More features
   7. Cross-chain bridge: we'll expand our market by building crosschain bridge. This feature allows people from other blockchains can exchange nfts in our marketplace.
   8. DAO: When our user is large enough, we'll implement DAO to prevent from reminting existed nfts. Users have to stake a specific amount of their native coin to be a voter. When these people see violated nft, they will vote the nft. If the number of votes is over 2/3 of voters, the nft will be disabled. 
   9. Social network: This is a place where people can share their nft with other people. And Creators can make their community more active, more famous, earn more money
+
+
+
+Add time creating item
